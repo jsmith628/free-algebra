@@ -3,47 +3,19 @@ use maths_traits::algebra::*;
 
 use std::marker::PhantomData;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
+#[derive(Derivative)]
+#[derivative(Clone(clone_from="true"))]
+#[derivative(Default(bound=""))]
+#[derivative(PartialEq, Eq, Hash)]
 pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
+    #[derivative(Hash(hash_with="crate::map_hash"))]
     terms: HashMap<T,R>,
+
+    #[derivative(PartialEq="ignore", Hash="ignore")]
+    #[derivative(Debug="ignore")]
     rule: PhantomData<Box<A>>
-}
-
-impl<T:Hash+Eq+Clone,R:Clone,A:?Sized> Clone for ModuleString<R,T,A> {
-    #[inline] fn clone(&self) -> Self { ModuleString {terms: self.terms.clone(), rule: PhantomData} }
-}
-
-impl<T:Hash+Eq+Clone,R:Eq,A:?Sized> Eq for ModuleString<R,T,A> {}
-impl<T:Hash+Eq+Clone,R:PartialEq,A:?Sized> PartialEq for ModuleString<R,T,A> {
-    #[inline] fn eq(&self, rhs:&Self) -> bool {self.terms.eq(&rhs.terms)}
-    #[inline] fn ne(&self, rhs:&Self) -> bool {self.terms.ne(&rhs.terms)}
-}
-
-impl<T:Hash+Eq,R:Hash,A:?Sized> Hash for ModuleString<R,T,A> {
-    fn hash<H:Hasher>(&self, state: &mut H) {
-        use std::num::Wrapping;
-        use std::collections::hash_map::DefaultHasher;
-
-        let mut hash = Wrapping(0u64);
-        let mut start = true;
-        for (k,v) in self.terms.iter(){
-            //hash the key-value pair
-            let mut d = DefaultHasher::new();
-            (k,v).hash(&mut d);
-            let next = Wrapping(d.finish());
-
-            //now, compose the hash with the main hash using multiplication
-            //since that is commutative
-            hash = if start {next} else {hash * next};
-            start = false;
-        }
-        state.write_u64(hash.0)
-    }
-}
-
-impl<T:Hash+Eq,R,A:?Sized> Default for ModuleString<R,T,A> {
-    #[inline] fn default() -> Self {ModuleString{terms:HashMap::new(),rule:PhantomData}}
 }
 
 impl<T:Hash+Eq,R:One,A:?Sized> From<T> for ModuleString<R,T,A> { #[inline] fn from(t:T) -> Self {(R::one(),t).into()} }
