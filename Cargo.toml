@@ -1,10 +1,13 @@
 [package]
 name = "free-algebra"
-version = "0.1.0"
 authors = ["Joshua Smith <anvil775@gmail.com>"]
+version = "0.1.0"
+edition = "2018"
 
 [lib]
 name = "free_algebra"
 
 [dependencies]
-maths-traits = {path = "../math-traits"}
+derivative = "1.0"
+num-traits = "0.2"
+maths-traits = "0.2"

@@ -1,5 +1,8 @@
 #![feature(specialization)]
+#![feature(marker_trait_attr)]
 
+#[macro_use] extern crate derivative;
+extern crate num_traits;
 extern crate maths_traits;
 
 pub use self::monoid::*;
@@ -16,5 +19,5 @@ macro_rules! from_assign {
 
 }
 
-pub mod monoid;
-pub mod module;
+mod monoid;
+mod module;
