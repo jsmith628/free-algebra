@@ -2,7 +2,9 @@
 use maths_traits::algebra::*;
 
 use std::marker::PhantomData;
+use std::collections::hash_map;
 use std::collections::HashMap;
+use std::iter::*;
 use std::hash::Hash;
 
 #[derive(Derivative)]
@@ -11,6 +13,7 @@ use std::hash::Hash;
 #[derivative(PartialEq, Eq, Hash)]
 pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
     #[derivative(Hash(hash_with="crate::map_hash"))]
+    #[derivative(Default(value="HashMap::with_capacity(0)"))]
     terms: HashMap<T,R>,
 
     #[derivative(PartialEq="ignore", Hash="ignore")]
@@ -18,31 +21,82 @@ pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
     rule: PhantomData<Box<A>>
 }
 
-impl<T:Hash+Eq,R:One,A:?Sized> From<T> for ModuleString<R,T,A> { #[inline] fn from(t:T) -> Self {(R::one(),t).into()} }
+impl<T:Hash+Eq,R:One,A:?Sized> From<T> for ModuleString<R,T,A> {
+    #[inline] fn from(t:T) -> Self {(R::one(),t).into()}
+}
+
 impl<T:Hash+Eq,R:One,A:?Sized> From<(R, T)> for ModuleString<R,T,A> {
-    #[inline] fn from((r,t):(R,T)) -> Self {
+    #[inline]
+    fn from((r,t):(R,T)) -> Self {
         let mut m = HashMap::new();
         m.insert(t, r);
         ModuleString{terms:m, rule:PhantomData}
     }
 }
 
-impl<T:Hash+Eq,R,A:?Sized> AsRef<HashMap<T,R>> for ModuleString<R,T,A> {
-    #[inline] fn as_ref(&self) -> &HashMap<T,R> {&self.terms}
-}
 impl<T:Hash+Eq,R,A:?Sized,I> Index<I> for ModuleString<R,T,A> where HashMap<T,R>:Index<I> {
     type Output = <HashMap<T,R> as Index<I>>::Output;
     #[inline] fn index(&self, i:I) -> &Self::Output {&self.terms[i]}
 }
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
-    pub fn terms(&self) -> usize {self.terms.len()}
+    pub fn num_terms(&self) -> usize {self.terms.len()}
 }
 
 impl<T:Hash+Eq,R,A:?Sized> IntoIterator for ModuleString<R,T,A> {
-    type Item = <HashMap<T,R> as IntoIterator>::Item;
-    type IntoIter = <HashMap<T,R> as IntoIterator>::IntoIter;
-    #[inline] fn into_iter(self) -> Self::IntoIter { self.terms.into_iter() }
+    type Item = (R,T);
+    type IntoIter = Map<hash_map::IntoIter<T,R>, fn((T,R)) -> (R,T)>;
+    #[inline] fn into_iter(self) -> Self::IntoIter { self.terms.into_iter().map(|(t,r)| (r,t)) }
+}
+
+impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
+    pub fn iter(&self) -> ::std::collections::hash_map::Iter<T,R> { self.terms.iter() }
+}
+
+impl<T:Hash+Eq,R,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
+    default fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) {
+        self.terms.extend(iter.into_iter().map(|(r,t)| (t,r)));
+    }
+}
+
+impl<T:Hash+Eq,R:Zero,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
+    fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) {
+        self.terms.extend(iter.into_iter().filter(|(r,_)| r.is_zero()).map(|(r,t)| (t,r)));
+    }
+}
+
+impl<T:Hash+Eq,R:One,A:?Sized> Extend<T> for ModuleString<R,T,A> {
+    fn extend<I:IntoIterator<Item=T>>(&mut self, iter:I) {
+        self.terms.extend(iter.into_iter().map(|t| (t,R::one())));
+    }
+}
+
+impl<T:Hash+Eq,R,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A> {
+    fn from_iter<I:IntoIterator<Item=(R,T)>>(iter:I) -> Self {
+        let mut from = Self::default();
+        from.extend(iter);
+        from
+    }
+}
+
+impl<T:Hash+Eq,R:One,A:?Sized> FromIterator<T> for ModuleString<R,T,A> {
+    fn from_iter<I:IntoIterator<Item=T>>(iter:I) -> Self {
+        Self::from_iter(iter.into_iter().map(|t| (R::one(), t)))
+    }
+}
+
+impl<T:Hash+Eq,R,A:?Sized> FromIterator<Self> for ModuleString<R,T,A> {
+    fn from_iter<I:IntoIterator<Item=Self>>(iter:I) -> Self {
+        Self::from_iter(iter.into_iter().flatten())
+    }
+}
+
+impl<T:Hash+Eq,R,A:?Sized,K> Sum<K> for ModuleString<R,T,A> where Self:FromIterator<K> {
+    fn sum<I:Iterator<Item=K>>(iter:I) -> Self { Self::from_iter(iter) }
+}
+
+impl<T:Hash+Eq,R,A:?Sized,K> Product<K> for ModuleString<R,T,A> where Self:Mul<K,Output=Self>+One {
+    fn product<I:Iterator<Item=K>>(iter:I) -> Self { iter.into_iter().fold(Self::one(), |m,k| m*k) }
 }
 
 pub trait AlgebraRule<R,T> { fn apply(t1:T, t2:T) -> (Option<R>,T); }
