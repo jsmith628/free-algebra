@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::collections::hash_map;
 use std::collections::HashMap;
 use std::iter::*;
+use std::iter::Extend;
 use std::hash::Hash;
 
 #[derive(Derivative)]
@@ -50,28 +51,30 @@ impl<T:Hash+Eq,R,A:?Sized> IntoIterator for ModuleString<R,T,A> {
 }
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
-    pub fn iter(&self) -> ::std::collections::hash_map::Iter<T,R> { self.terms.iter() }
+    pub fn iter<'a>(&'a self) -> Map<hash_map::Iter<T,R>, fn((&'a T,&'a R)) -> (&'a R,&'a T)> {
+        self.terms.iter().map(|(t,r)| (r,t))
+    }
 }
 
-impl<T:Hash+Eq,R,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:Add,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
     default fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) {
         self.terms.extend(iter.into_iter().map(|(r,t)| (t,r)));
     }
 }
 
-impl<T:Hash+Eq,R:Zero,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:Add+Zero,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
     fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) {
         self.terms.extend(iter.into_iter().filter(|(r,_)| r.is_zero()).map(|(r,t)| (t,r)));
     }
 }
 
-impl<T:Hash+Eq,R:One,A:?Sized> Extend<T> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:Add+One,A:?Sized> Extend<T> for ModuleString<R,T,A> {
     fn extend<I:IntoIterator<Item=T>>(&mut self, iter:I) {
         self.terms.extend(iter.into_iter().map(|t| (t,R::one())));
     }
 }
 
-impl<T:Hash+Eq,R,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:Add,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A> {
     fn from_iter<I:IntoIterator<Item=(R,T)>>(iter:I) -> Self {
         let mut from = Self::default();
         from.extend(iter);
@@ -79,19 +82,19 @@ impl<T:Hash+Eq,R,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A> {
     }
 }
 
-impl<T:Hash+Eq,R:One,A:?Sized> FromIterator<T> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:Add+One,A:?Sized> FromIterator<T> for ModuleString<R,T,A> {
     fn from_iter<I:IntoIterator<Item=T>>(iter:I) -> Self {
         Self::from_iter(iter.into_iter().map(|t| (R::one(), t)))
     }
 }
 
-impl<T:Hash+Eq,R,A:?Sized> FromIterator<Self> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:Add,A:?Sized> FromIterator<Self> for ModuleString<R,T,A> {
     fn from_iter<I:IntoIterator<Item=Self>>(iter:I) -> Self {
         Self::from_iter(iter.into_iter().flatten())
     }
 }
 
-impl<T:Hash+Eq,R,A:?Sized,K> Sum<K> for ModuleString<R,T,A> where Self:FromIterator<K> {
+impl<T:Hash+Eq,R:Add,A:?Sized,K> Sum<K> for ModuleString<R,T,A> where Self:FromIterator<K> {
     fn sum<I:Iterator<Item=K>>(iter:I) -> Self { Self::from_iter(iter) }
 }
 
