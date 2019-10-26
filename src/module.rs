@@ -1,5 +1,6 @@
 
 use maths_traits::algebra::*;
+use maths_traits::algebra::Zero;
 
 use std::marker::PhantomData;
 use std::collections::hash_map;
@@ -56,25 +57,36 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
     }
 }
 
-impl<T:Hash+Eq,R:Add,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
-    default fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) {
-        self.terms.extend(iter.into_iter().map(|(r,t)| (t,r)));
+trait IsZero { fn _is_zero(&self) -> bool; }
+impl<T> IsZero for T { default fn _is_zero(&self) -> bool { false } }
+impl<T:Zero> IsZero for T { default fn _is_zero(&self) -> bool { self.is_zero() } }
+
+impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
+
+    fn insert_term<F:Fn(&mut R, R)>(&mut self, rhs:(R,T), f:F) {
+        if !rhs.0._is_zero() {
+            let (r, t) = rhs;
+            if let Some(r2) = self.terms.get_mut(&t) {
+                f(r2,r);
+                if r2._is_zero() { self.terms.remove(&t); }
+            } else {
+                self.terms.insert(t, r);
+            }
+        }
     }
+
+    fn insert<I:IntoIterator<Item=(R,T)>, F:Fn(&mut R, R)+Copy>(&mut self, rhs:I, f:F) {
+        rhs.into_iter().for_each(|term| self.insert_term(term, f));
+    }
+
+    fn clean(&mut self) { self.terms.retain(|r,_| !r._is_zero()); }
 }
 
-impl<T:Hash+Eq,R:Add+Zero,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
-    fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) {
-        self.terms.extend(iter.into_iter().filter(|(r,_)| r.is_zero()).map(|(r,t)| (t,r)));
-    }
+impl<T:Hash+Eq,R:AddAssign,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
+    fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) { self.insert(iter, |a,b| *a+=b) }
 }
 
-impl<T:Hash+Eq,R:Add+One,A:?Sized> Extend<T> for ModuleString<R,T,A> {
-    fn extend<I:IntoIterator<Item=T>>(&mut self, iter:I) {
-        self.terms.extend(iter.into_iter().map(|t| (t,R::one())));
-    }
-}
-
-impl<T:Hash+Eq,R:Add,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:AddAssign,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A> {
     fn from_iter<I:IntoIterator<Item=(R,T)>>(iter:I) -> Self {
         let mut from = Self::default();
         from.extend(iter);
@@ -82,19 +94,19 @@ impl<T:Hash+Eq,R:Add,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A> {
     }
 }
 
-impl<T:Hash+Eq,R:Add+One,A:?Sized> FromIterator<T> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:AddAssign+Add+One,A:?Sized> FromIterator<T> for ModuleString<R,T,A> {
     fn from_iter<I:IntoIterator<Item=T>>(iter:I) -> Self {
         Self::from_iter(iter.into_iter().map(|t| (R::one(), t)))
     }
 }
 
-impl<T:Hash+Eq,R:Add,A:?Sized> FromIterator<Self> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:AddAssign,A:?Sized> FromIterator<Self> for ModuleString<R,T,A> {
     fn from_iter<I:IntoIterator<Item=Self>>(iter:I) -> Self {
         Self::from_iter(iter.into_iter().flatten())
     }
 }
 
-impl<T:Hash+Eq,R:Add,A:?Sized,K> Sum<K> for ModuleString<R,T,A> where Self:FromIterator<K> {
+impl<T:Hash+Eq,R:AddAssign,A:?Sized,K> Sum<K> for ModuleString<R,T,A> where Self:FromIterator<K> {
     fn sum<I:Iterator<Item=K>>(iter:I) -> Self { Self::from_iter(iter) }
 }
 
@@ -110,26 +122,6 @@ impl<T:Hash+Eq,R:MulAssociative,A:?Sized+MulAssociative> MulAssociative for Modu
 impl<T:Hash+Eq,R:MulCommutative,A:?Sized+MulCommutative> MulCommutative for ModuleString<R,T,A> {}
 
 impl<T:Hash+Eq,R:Distributive,A:?Sized> Distributive for ModuleString<R,T,A> {}
-
-trait Clean { fn clean(&mut self); }
-
-impl<T:Hash+Eq,R,A:?Sized> Clean for ModuleString<R,T,A> { default fn clean(&mut self) {} }
-impl<T:Hash+Eq,R:Zero,A:?Sized> Clean for ModuleString<R,T,A> {
-    default fn clean(&mut self) {self.terms.retain(|_,r| !r.is_zero())}
-}
-
-impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
-    fn insert<F:Fn(&mut R, R)>(&mut self, rhs:Self, f:F) {
-        for (t, r) in rhs.terms.into_iter() {
-            if let Some(r2) = self.terms.get_mut(&t) {
-                f(r2,r);
-                continue;
-            }
-            self.terms.insert(t, r);
-        }
-        self.clean();
-    }
-}
 
 impl<T:Hash+Eq,R:AddAssign,A:?Sized> AddAssign for ModuleString<R,T,A> {
     fn add_assign(&mut self, rhs:Self) {self.insert(rhs, |r1, r2| *r1+=r2)}
@@ -159,7 +151,7 @@ impl<T:Hash+Eq,R:Neg,A:?Sized> Neg for ModuleString<R,T,A> {
     type Output = ModuleString<R::Output,T,A>;
     fn neg(self) -> Self::Output {
         ModuleString {
-            terms: self.terms.into_iter().map(|(t,r)| (t,-r)).collect(),
+            terms: self.terms.into_iter().map(|(t,r)| (t,-r)).filter(|(_,r)| r._is_zero()).collect(),
             rule: PhantomData
         }
     }
@@ -173,7 +165,7 @@ impl<T:Hash+Eq,R:AddAssign,A:?Sized> Zero for ModuleString<R,T,A> {
 
 impl<T:Hash+Eq+Clone,R:MulMagma,A:?Sized+AlgebraRule<R,T>> MulAssign<(R,T)> for ModuleString<R,T,A> {
     fn mul_assign(&mut self, (r1,t1): (R,T)) {
-        let mut temp = HashMap::new();
+        let mut temp = HashMap::with_capacity(0);
         ::std::mem::swap(&mut self.terms, &mut temp);
         self.terms = temp.into_iter().map(
             |(t, r)| {
@@ -183,19 +175,13 @@ impl<T:Hash+Eq+Clone,R:MulMagma,A:?Sized+AlgebraRule<R,T>> MulAssign<(R,T)> for 
                     None => (t2, r*r1.clone()),
                 }
             }
-        ).collect();
-        self.clean();
+        ).filter(|(_,r)| r._is_zero()).collect();
     }
 }
 
 impl<T:Hash+Eq+Clone,R:Semiring,A:?Sized+AlgebraRule<R,T>> MulAssign for ModuleString<R,T,A> {
     fn mul_assign(&mut self, rhs:Self) {
-        let res = rhs.terms.into_iter().map(
-            |(t, r)| self.clone() * (r,t)
-        ).fold(Self::zero(),
-            |res, p| res + p
-        );
-        self.terms = res.terms;
+        self.terms = rhs.terms.into_iter().map(|(t, r)| self.clone() * (r,t)).sum();
     }
 }
 
