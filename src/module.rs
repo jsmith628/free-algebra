@@ -94,7 +94,7 @@ impl<T:Hash+Eq,R:AddAssign,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A>
     }
 }
 
-impl<T:Hash+Eq,R:AddAssign+Add+One,A:?Sized> FromIterator<T> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:AddAssign+One,A:?Sized> FromIterator<T> for ModuleString<R,T,A> {
     fn from_iter<I:IntoIterator<Item=T>>(iter:I) -> Self {
         Self::from_iter(iter.into_iter().map(|t| (R::one(), t)))
     }
@@ -115,6 +115,10 @@ impl<T:Hash+Eq,R,A:?Sized,K> Product<K> for ModuleString<R,T,A> where Self:Mul<K
 }
 
 pub trait AlgebraRule<R,T> { fn apply(t1:T, t2:T) -> (Option<R>,T); }
+pub trait UnitalAlgebraRule<R,T>: AlgebraRule<R,T> {
+    fn one() -> T;
+    fn is_one(t:&T) -> bool;
+}
 
 impl<T:Hash+Eq,R:AddAssociative,A:?Sized> AddAssociative for ModuleString<R,T,A> {}
 impl<T:Hash+Eq,R:AddCommutative,A:?Sized> AddCommutative for ModuleString<R,T,A> {}
@@ -162,6 +166,18 @@ impl<T:Hash+Eq,R:AddAssign,A:?Sized> Zero for ModuleString<R,T,A> {
     #[inline] fn is_zero(&self) -> bool {self.terms.len()==0}
 }
 
+impl<T:Clone+Hash+Eq,R:PartialEq+UnitalSemiring,A:UnitalAlgebraRule<R,T>+?Sized> One for ModuleString<R,T,A> {
+    #[inline] fn one() -> Self { A::one().into() }
+    #[inline] fn is_one(&self) -> bool {
+        if self.terms.len()==1 {
+            let term = self.iter().next().unwrap();
+            term.0.is_one() && A::is_one(term.1)
+        } else {
+            false
+        }
+    }
+}
+
 
 impl<T:Hash+Eq+Clone,R:MulMagma,A:?Sized+AlgebraRule<R,T>> MulAssign<(R,T)> for ModuleString<R,T,A> {
     fn mul_assign(&mut self, (r1,t1): (R,T)) {
@@ -181,7 +197,7 @@ impl<T:Hash+Eq+Clone,R:MulMagma,A:?Sized+AlgebraRule<R,T>> MulAssign<(R,T)> for 
 
 impl<T:Hash+Eq+Clone,R:Semiring,A:?Sized+AlgebraRule<R,T>> MulAssign for ModuleString<R,T,A> {
     fn mul_assign(&mut self, rhs:Self) {
-        self.terms = rhs.terms.into_iter().map(|(t, r)| self.clone() * (r,t)).sum();
+        *self = rhs.terms.into_iter().map(|(t, r)| self.clone() * (r,t)).sum();
     }
 }
 
