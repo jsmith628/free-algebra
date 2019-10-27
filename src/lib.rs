@@ -9,8 +9,15 @@ extern crate maths_traits;
 pub use self::monoid::*;
 pub use self::module::*;
 
+use maths_traits::algebra::*;
+
+use num_traits::Pow;
+
+use std::marker::PhantomData;
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use std::iter::*;
 
 macro_rules! from_assign {
 

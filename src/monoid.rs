@@ -1,11 +1,6 @@
+use super::*;
 
-use num_traits::Pow;
-use maths_traits::algebra::*;
-
-use std::marker::PhantomData;
 use std::ops::Index;
-use std::borrow::Borrow;
-use std::iter::*;
 
 #[derive(Derivative)]
 #[derivative(Clone(clone_from="true"))]

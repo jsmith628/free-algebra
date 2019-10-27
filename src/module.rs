@@ -1,15 +1,7 @@
-
-use maths_traits::algebra::*;
-use maths_traits::algebra::Zero;
-
-use std::marker::PhantomData;
-use std::collections::hash_map;
-use std::collections::HashMap;
-use std::iter::*;
-use std::iter::Extend;
-use std::hash::Hash;
-
 use super::*;
+
+use std::collections::hash_map;
+
 
 #[derive(Derivative)]
 #[derivative(Clone(clone_from="true"))]
@@ -203,6 +195,10 @@ impl<T:Hash+Eq+Clone,R:Semiring,A:?Sized+AlgebraRule<R,T>> MulAssign for ModuleS
     }
 }
 
+impl<Z:Natural,T:Hash+Eq+Clone,R:PartialEq+UnitalSemiring,A:?Sized+UnitalAlgebraRule<R,T>+MulAssociative> Pow<Z> for ModuleString<R,T,A> {
+    type Output = Self;
+    fn pow(self, p:Z) -> Self { repeated_squaring(self, p) }
+}
 
 pub struct RuleFromAdd;
 pub struct RuleFromMul;
