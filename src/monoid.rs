@@ -82,6 +82,15 @@ impl<C,A:MonoidRule<C>,M:?Sized> Distributive for MonoidalString<C,A,M> where M:
 
 impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
 
+    fn apply_one<R:MonoidRule<C>+?Sized>(&mut self, rhs:C) {
+        //swap out string with a dummy vec so we don't violate move rules
+        let mut temp = Vec::with_capacity(0);
+        ::std::mem::swap(&mut self.string, &mut temp);
+
+        //apply the monoid rule
+        self.string = R::apply(temp,rhs);
+    }
+
     fn apply<R:MonoidRule<C>+?Sized>(&mut self, rhs:Self) {
         //swap out string with a dummy vec so we don't violate move rules
         let mut temp = Vec::with_capacity(0);
@@ -97,6 +106,19 @@ impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
             rules: PhantomData
         }
     }
+}
+
+impl<C,A:MonoidRule<C>+?Sized,M:?Sized> AddAssign<C> for MonoidalString<C,A,M> {
+    #[inline] fn add_assign(&mut self, rhs:C) { self.apply_one::<A>(rhs) }
+}
+impl<C,A:?Sized,M:MonoidRule<C>+?Sized> MulAssign<C> for MonoidalString<C,A,M> {
+    #[inline] fn mul_assign(&mut self, rhs:C) { self.apply_one::<M>(rhs) }
+}
+impl<C,A:InvMonoidRule<C>+?Sized,M:?Sized> SubAssign<C> for MonoidalString<C,A,M> {
+    #[inline] fn sub_assign(&mut self, rhs:C) { *self+=A::invert(rhs) }
+}
+impl<C,A:?Sized,M:InvMonoidRule<C>+?Sized> DivAssign<C> for MonoidalString<C,A,M> {
+    #[inline] fn div_assign(&mut self, rhs:C) { *self*=M::invert(rhs) }
 }
 
 impl<C,A:MonoidRule<C>+?Sized,M:?Sized> AddAssign for MonoidalString<C,A,M> {
@@ -163,5 +185,67 @@ impl<C> MonoidRule<C> for () {
     }
 }
 
+#[derive(Derivative)]
+#[derivative(PartialEq, Eq, Clone, Copy, Hash, Debug)]
+pub struct FreePow<C:Eq,Z:IntegerSubset>(pub C,pub Z);
 
-pub type FreeMonoid<T> = MonoidalString<T,(),()>;
+pub struct PowRule;
+
+impl<C:Eq,Z:IntegerSubset> AssociativeRule<FreePow<C,Z>> for PowRule {}
+impl<C:Eq,Z:IntegerSubset> MonoidRule<FreePow<C,Z>> for PowRule {
+    fn apply(mut string: Vec<FreePow<C,Z>>, letter: FreePow<C,Z>) -> Vec<FreePow<C,Z>> {
+        if string.last().map_or(false, |l| l.0==letter.0) {
+            let last = string.pop().unwrap();
+            let last = FreePow(letter.0, last.1 + letter.1);
+            if !last.1.is_zero() { string.push(last); }
+        } else {
+            string.push(letter);
+        }
+        string
+    }
+}
+
+impl<C:Eq,Z:Integer> InvMonoidRule<FreePow<C,Z>> for PowRule {
+    fn invert(FreePow(base, pow): FreePow<C,Z>) -> FreePow<C,Z> { FreePow(base, -pow) }
+}
+
+impl<C:Eq,Z:IntegerSubset> From<C> for FreePow<C,Z> { fn from(c:C) -> Self { (c,Z::one()).into() } }
+impl<C:Eq,Z:IntegerSubset> From<(C,Z)> for FreePow<C,Z> { fn from((c,z):(C,Z)) -> Self { FreePow(c,z) } }
+
+impl<C:Eq,Z:Integer> Inv for FreePow<C,Z> {
+    type Output = Self;
+    fn inv(self) -> Self { PowRule::invert(self) }
+}
+
+impl<C:Eq,Z:IntegerSubset> Mul for FreePow<C,Z> {
+    type Output = FreeGroup<C,Z>;
+    fn mul(self, rhs:Self) -> FreeGroup<C,Z> { FreeGroup::from(self) * rhs }
+}
+
+impl<C:Eq,Z:IntegerSubset> Mul<C> for FreePow<C,Z> {
+    type Output = FreeGroup<C,Z>;
+    fn mul(self, rhs:C) -> FreeGroup<C,Z> { self * Self::from(rhs) }
+}
+
+impl<C:Eq,Z:IntegerSubset> Mul<FreeGroup<C,Z>> for FreePow<C,Z> {
+    type Output = FreeGroup<C,Z>;
+    fn mul(self, rhs:FreeGroup<C,Z>) -> FreeGroup<C,Z> { FreeGroup::from(self) * rhs }
+}
+
+impl<C:Eq,Z:Integer> Div for FreePow<C,Z> {
+    type Output = FreeGroup<C,Z>;
+    fn div(self, rhs:Self) -> FreeGroup<C,Z> { self * rhs.inv() }
+}
+
+impl<C:Eq,Z:Integer> Div<C> for FreePow<C,Z> {
+    type Output = FreeGroup<C,Z>;
+    fn div(self, rhs:C) -> FreeGroup<C,Z> { self / Self::from(rhs) }
+}
+
+impl<C:Eq,Z:Integer> Div<FreeGroup<C,Z>> for FreePow<C,Z> {
+    type Output = FreeGroup<C,Z>;
+    fn div(self, rhs:FreeGroup<C,Z>) -> FreeGroup<C,Z> { FreeGroup::from(self) / rhs }
+}
+
+pub type FreeMonoid<C> = MonoidalString<C,(),()>;
+pub type FreeGroup<C,Z> = MonoidalString<FreePow<C,Z>,!,PowRule>;
