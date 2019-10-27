@@ -9,6 +9,8 @@ use std::iter::*;
 use std::iter::Extend;
 use std::hash::Hash;
 
+use super::*;
+
 #[derive(Derivative)]
 #[derivative(Clone(clone_from="true"))]
 #[derivative(Default(bound=""))]
@@ -202,9 +204,25 @@ impl<T:Hash+Eq+Clone,R:Semiring,A:?Sized+AlgebraRule<R,T>> MulAssign for ModuleS
 }
 
 
+pub struct RuleFromAdd;
+pub struct RuleFromMul;
+
+impl<R,T:Add<Output=T>> AlgebraRule<R,T> for RuleFromAdd {
+    fn apply(t1:T, t2:T) -> (Option<R>,T) { (None, t1+t2) }
+}
+impl<R,T:Add<Output=T>+Zero> UnitalAlgebraRule<R,T> for RuleFromAdd {
+    fn one() -> T { T::zero() }
+    fn is_one(t:&T) -> bool { t.is_zero() }
+}
+
+impl<R,T:Mul<Output=T>> AlgebraRule<R,T> for RuleFromMul {
+    fn apply(t1:T, t2:T) -> (Option<R>,T) { (None, t1*t2) }
+}
+impl<R,T:Mul<Output=T>+One+PartialEq> UnitalAlgebraRule<R,T> for RuleFromMul {
+    fn one() -> T { T::one() }
+    fn is_one(t:&T) -> bool { t.is_one() }
+}
 
 
-
-
-
-pub type FreeModule<R,T> = ModuleString<R,T,()>;
+pub type FreeModule<R,T> = ModuleString<R,T,!>;
+pub type FreeAlgebra<R,T> = ModuleString<R,FreeMonoid<T>,RuleFromMul>;

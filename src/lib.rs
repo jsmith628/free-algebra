@@ -1,5 +1,6 @@
 #![feature(specialization)]
 #![feature(marker_trait_attr)]
+#![feature(never_type)]
 
 #[macro_use] extern crate derivative;
 extern crate num_traits;

@@ -75,11 +75,15 @@ pub trait MonoidRule<C> {
 
 pub trait InvMonoidRule<C>: MonoidRule<C> { fn invert(letter: C) -> C; }
 
-impl<C,A:AddAssociative+?Sized,M:?Sized> AddAssociative for MonoidalString<C,A,M> {}
-impl<C,A:AddCommutative+?Sized,M:?Sized> AddCommutative for MonoidalString<C,A,M> {}
-impl<C,A:?Sized,M:MulAssociative+?Sized> MulAssociative for MonoidalString<C,A,M> {}
-impl<C,A:?Sized,M:MulCommutative+?Sized> MulCommutative for MonoidalString<C,A,M> {}
-impl<C,A,M:?Sized> Distributive for MonoidalString<C,A,M> where M:Distributive<A> {}
+#[marker] pub trait AssociativeRule<C>: MonoidRule<C> {}
+#[marker] pub trait CommutativeRule<C>: MonoidRule<C> {}
+#[marker] pub trait DistributiveRule<C,A:MonoidRule<C>>: MonoidRule<C> {}
+
+impl<C,A:AssociativeRule<C>+?Sized,M:?Sized> AddAssociative for MonoidalString<C,A,M> {}
+impl<C,A:CommutativeRule<C>+?Sized,M:?Sized> AddCommutative for MonoidalString<C,A,M> {}
+impl<C,A:?Sized,M:AssociativeRule<C>+?Sized> MulAssociative for MonoidalString<C,A,M> {}
+impl<C,A:?Sized,M:CommutativeRule<C>+?Sized> MulCommutative for MonoidalString<C,A,M> {}
+impl<C,A:MonoidRule<C>,M:?Sized> Distributive for MonoidalString<C,A,M> where M:DistributiveRule<C,A> {}
 
 impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
 
@@ -151,3 +155,18 @@ where Self:PowMarker<Z> + MulAssociative
 {
     fn pow(self, p:Z) -> Self { repeated_squaring_inv(self, p) }
 }
+
+
+impl<C> AssociativeRule<C> for () {}
+impl<C> MonoidRule<C> for () {
+    fn apply(mut string: Vec<C>, letter: C) -> Vec<C> {string.push(letter); string}
+    fn apply_many(mut string1: Vec<C>, mut string2: Vec<C>) -> Vec<C> {
+        string1.append(&mut string2); string1
+    }
+    fn apply_iter<I:Iterator<Item=C>>(mut string: Vec<C>, letters: I) -> Vec<C> {
+        string.extend(letters); string
+    }
+}
+
+
+pub type FreeMonoid<T> = MonoidalString<T,(),()>;
