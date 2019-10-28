@@ -151,6 +151,14 @@ impl<C,A:?Sized,M:InvMonoidRule<C>+?Sized> Inv for MonoidalString<C,A,M> {
     type Output = Self; #[inline] fn inv(self) -> Self {self.invert::<M>()}
 }
 
+impl<C:Clone,A:?Sized,M:InvMonoidRule<C>+AssociativeRule<C>+?Sized> MonoidalString<C,A,M> {
+    pub fn commutator(self, rhs:Self) -> Self { self.clone().inv()*rhs.clone()*self*rhs }
+}
+
+impl<C:Clone,A:InvMonoidRule<C>+AssociativeRule<C>+?Sized,M:?Sized> MonoidalString<C,A,M> {
+    pub fn add_commutator(self, rhs:Self) -> Self { -self.clone() - rhs.clone() + self + rhs }
+}
+
 from_assign!(impl<C,A,M,X> Add<X>.add for MonoidalString<C,A,M> with += where A:?Sized, M:?Sized, Self:AddAssign<X>);
 from_assign!(impl<C,A,M,X> Sub<X>.sub for MonoidalString<C,A,M> with -= where A:?Sized, M:?Sized, Self:SubAssign<X>);
 from_assign!(impl<C,A,M,X> Mul<X>.mul for MonoidalString<C,A,M> with *= where A:?Sized, M:?Sized, Self:MulAssign<X>);
