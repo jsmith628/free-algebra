@@ -269,5 +269,7 @@ impl<R,T:Mul<Output=T>+One+PartialEq> UnitalAlgebraRule<R,T> for RuleFromMul {
     fn is_one(t:&T) -> bool { t.is_one() }
 }
 
+pub type MonoidRing<R,M> = MonoidalString<R,M,RuleFromMul>;
+
 pub type FreeModule<R,T> = ModuleString<R,T,!>;
-pub type FreeAlgebra<R,T> = ModuleString<R,FreeMonoid<T>,RuleFromMul>;
+pub type FreeAlgebra<R,T> = MonoidRing<R,FreeMonoid<T>>;
