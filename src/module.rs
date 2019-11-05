@@ -17,6 +17,38 @@ pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
     rule: PhantomData<Box<A>>
 }
 
+pub type Iter<'a,R,T> = Map<hash_map::Iter<'a,T,R>, fn((&'a T,&'a R)) -> (&'a R,&'a T)>;
+pub type IntoIter<R,T> = Map<hash_map::IntoIter<T,R>, fn((T,R)) -> (R,T)>;
+
+pub struct IterMut<'a, R:AddAssign, T:Hash+Eq, A:?Sized> {
+    dest_ref: &'a mut ModuleString<R,T,A>,
+    next: Option<(R,T)>,
+    iter: IntoIter<R,T>
+}
+
+impl<'a,T:Hash+Eq,R:AddAssign,A:?Sized> FusedIterator for IterMut<'a,R,T,A> {}
+impl<'a,T:Hash+Eq,R:AddAssign,A:?Sized> ExactSizeIterator for IterMut<'a,R,T,A> {}
+impl<'a,T:Hash+Eq,R:AddAssign,A:?Sized> Iterator for IterMut<'a,R,T,A> {
+    type Item = (&'a mut R, &'a mut T);
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.take().map(|t| *self.dest_ref += t);
+        self.next = self.iter.next();
+
+        //we know that the given reference is lifetime 'a because in order for next to be dropped,
+        //either self must be borrowed mutably again or dropped, which cannot happen while the reference lives
+        self.next.as_mut().map(|t| unsafe {&mut *(t as *mut (R,T))} ).map(|t| (&mut t.0, &mut t.1))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+}
+
+impl<'a,T:Hash+Eq,R:AddAssign,A:?Sized> Drop for IterMut<'a,R,T,A> {
+    fn drop(&mut self) {
+        self.next.take().map(|t| *self.dest_ref += t);
+        for t in &mut self.iter { *self.dest_ref += t }
+    }
+}
+
 impl<T:Hash+Eq,R:One,A:?Sized> From<T> for ModuleString<R,T,A> {
     #[inline] fn from(t:T) -> Self {(R::one(),t).into()}
 }
@@ -41,13 +73,16 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
 
 impl<T:Hash+Eq,R,A:?Sized> IntoIterator for ModuleString<R,T,A> {
     type Item = (R,T);
-    type IntoIter = Map<hash_map::IntoIter<T,R>, fn((T,R)) -> (R,T)>;
-    #[inline] fn into_iter(self) -> Self::IntoIter { self.terms.into_iter().map(|(t,r)| (r,t)) }
+    type IntoIter = IntoIter<R,T>;
+    #[inline] fn into_iter(self) -> IntoIter<R,T> { self.terms.into_iter().map(|(t,r)| (r,t)) }
 }
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
-    pub fn iter<'a>(&'a self) -> Map<hash_map::Iter<T,R>, fn((&'a T,&'a R)) -> (&'a R,&'a T)> {
-        self.terms.iter().map(|(t,r)| (r,t))
+    pub fn iter<'a>(&'a self) -> Iter<'a,R,T> { self.terms.iter().map(|(t,r)| (r,t)) }
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a,R,T,A> where R:AddAssign {
+        let mut temp = Self { terms: HashMap::with_capacity(self.terms.len()), rule:PhantomData };
+        ::std::mem::swap(self, &mut temp);
+        IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
     }
 }
 
@@ -127,6 +162,14 @@ impl<T:Hash+Eq,R:AddAssign,A:?Sized> AddAssign for ModuleString<R,T,A> {
 impl<T:Hash+Eq,R:SubAssign,A:?Sized> SubAssign for ModuleString<R,T,A> {
     fn sub_assign(&mut self, rhs:Self) {self.insert(rhs, |r1, r2| *r1-=r2)}
 }
+
+impl<T:Hash+Eq,R:AddAssign,A:?Sized> AddAssign<(R,T)> for ModuleString<R,T,A> {
+    fn add_assign(&mut self, rhs:(R,T)) {self.insert_term(rhs, |r1, r2| *r1+=r2)}
+}
+impl<T:Hash+Eq,R:SubAssign,A:?Sized> SubAssign<(R,T)> for ModuleString<R,T,A> {
+    fn sub_assign(&mut self, rhs:(R,T)) {self.insert_term(rhs, |r1, r2| *r1-=r2)}
+}
+
 impl<T:Hash+Eq,R:MulAssign+Clone,A:?Sized> MulAssign<R> for ModuleString<R,T,A> {
     fn mul_assign(&mut self, rhs:R) {
         for r2 in self.terms.values_mut() { *r2 *= rhs.clone() }
@@ -218,7 +261,6 @@ impl<R,T:Mul<Output=T>+One+PartialEq> UnitalAlgebraRule<R,T> for RuleFromMul {
     fn one() -> T { T::one() }
     fn is_one(t:&T) -> bool { t.is_one() }
 }
-
 
 pub type FreeModule<R,T> = ModuleString<R,T,!>;
 pub type FreeAlgebra<R,T> = ModuleString<R,FreeMonoid<T>,RuleFromMul>;

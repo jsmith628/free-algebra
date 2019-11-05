@@ -17,6 +17,7 @@ use std::marker::PhantomData;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+
 use std::iter::*;
 
 macro_rules! from_assign {
@@ -50,5 +51,5 @@ pub(self) fn map_hash<K:Hash+Eq,V:Hash, H:Hasher>(map: &HashMap<K,V>, state: &mu
     state.write_u64(hash.0)
 }
 
-mod monoid;
-mod module;
+pub mod monoid;
+pub mod module;

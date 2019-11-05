@@ -16,6 +16,9 @@ pub struct MonoidalString<C,A:?Sized,M:?Sized> {
     rules: PhantomData<(Box<A>,Box<M>)>
 }
 
+pub type Iter<'a,C> = std::slice::Iter<'a,C>;
+pub type IntoIter<C> = <Vec<C> as IntoIterator>::IntoIter;
+
 impl<C,A:?Sized,M:?Sized> From<C> for MonoidalString<C,A,M> {
     #[inline] fn from(c:C) -> Self {MonoidalString{string:vec![c],rules:PhantomData}}
 }
@@ -29,9 +32,9 @@ impl<C,A:?Sized,M:?Sized,I> Index<I> for MonoidalString<C,A,M> where Vec<C>:Inde
 }
 
 impl<C,A:?Sized,M:?Sized> IntoIterator for MonoidalString<C,A,M> {
-    type Item = <Vec<C> as IntoIterator>::Item;
-    type IntoIter = <Vec<C> as IntoIterator>::IntoIter;
-    #[inline] fn into_iter(self) -> Self::IntoIter { self.string.into_iter() }
+    type Item = C;
+    type IntoIter = IntoIter<C>;
+    #[inline] fn into_iter(self) -> IntoIter<C> { self.string.into_iter() }
 }
 
 impl<C,A:MonoidRule<C>+?Sized,M:?Sized> Sum<C> for MonoidalString<C,A,M> {
@@ -55,7 +58,7 @@ impl<C,A:?Sized,M:MonoidRule<C>+?Sized> Product for MonoidalString<C,A,M> {
 }
 
 impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
-    #[inline] pub fn iter(&self) -> std::slice::Iter<C> { self.string.iter() }
+    #[inline] pub fn iter(&self) -> Iter<C> { self.string.iter() }
 }
 
 pub trait MonoidRule<C> {
