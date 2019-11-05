@@ -87,10 +87,10 @@ impl<T> Div<FreeGroup<T>> for FreeInv<T> {
 ///of members of `C` where multiplication is given by concatenation. In other words, it's basically
 ///[`Vec<C>`](Vec) but with `a*b == {a.append(&mut b); a}`.
 ///
-pub type FreeMonoid<C> = MonoidalString<C,!,()>;
+pub type FreeMonoid<C> = MonoidalString<C,()>;
 
 ///A [FreeMonoid], but where each letter can be inverted
-pub type FreeGroup<C> = MonoidalString<FreeInv<C>,!,InvRule>;
+pub type FreeGroup<C> = MonoidalString<FreeInv<C>,InvRule>;
 
 ///
 ///Represents a free symbol raised to some power
@@ -172,7 +172,7 @@ impl<C:Eq,P:Add<Output=P>+Neg<Output=P>> Div<FreePowMonoid<C,P>> for FreePow<C,P
 }
 
 ///A [FreeModule] or [FreeGroup], but where repeated letters are grouped together using exponents
-pub type FreePowMonoid<C,P> = MonoidalString<FreePow<C,P>,!,PowRule>;
+pub type FreePowMonoid<C,P> = MonoidalString<FreePow<C,P>,PowRule>;
 
 
 ///Multiplication of terms using a type's intrinsic [addition](Add) operation
@@ -197,7 +197,7 @@ impl<R,T:Mul<Output=T>+One+PartialEq> UnitalAlgebraRule<R,T> for MulRule {
 }
 
 ///A [FreeModule] over some monoid, but with a multiplication between elements given using the monoid operation
-pub type MonoidRing<R,M> = MonoidalString<R,M,MulRule>;
+pub type MonoidRing<R,M> = ModuleString<R,M,MulRule>;
 
 ///
 ///A [module](RingModule) over a ring constructed from free addition scalar-multiplication of elements of a set

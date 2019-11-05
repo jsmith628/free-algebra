@@ -7,13 +7,13 @@ use std::ops::Index;
 #[derivative(Default(bound=""))]
 #[derivative(PartialEq, Eq, Hash)]
 #[derivative(Debug="transparent")]
-pub struct MonoidalString<C,A:?Sized,M:?Sized> {
+pub struct MonoidalString<C,M:?Sized> {
     #[derivative(Default(value="Vec::with_capacity(0)"))]
     string: Vec<C>,
 
     #[derivative(PartialEq="ignore", Hash="ignore")]
     #[derivative(Debug="ignore")]
-    rules: PhantomData<(Box<A>,Box<M>)>
+    rules: PhantomData<M>
 }
 
 ///Iterates over immutable references of the letters of a [MonoidalString]
@@ -22,45 +22,35 @@ pub type Iter<'a,C> = std::slice::Iter<'a,C>;
 ///Iterates over the letters of a [MonoidalString]
 pub type IntoIter<C> = <Vec<C> as IntoIterator>::IntoIter;
 
-impl<C,A:?Sized,M:?Sized> From<C> for MonoidalString<C,A,M> {
+impl<C,M:?Sized> From<C> for MonoidalString<C,M> {
     #[inline] fn from(c:C) -> Self {MonoidalString{string:vec![c],rules:PhantomData}}
 }
 
-impl<C,A:?Sized,M:?Sized> AsRef<[C]> for MonoidalString<C,A,M> { #[inline] fn as_ref(&self) -> &[C] {self.string.as_ref()} }
-impl<C,A:?Sized,M:?Sized> Borrow<[C]> for MonoidalString<C,A,M> { #[inline] fn borrow(&self) -> &[C] {self.string.borrow()} }
+impl<C,M:?Sized> AsRef<[C]> for MonoidalString<C,M> { #[inline] fn as_ref(&self) -> &[C] {self.string.as_ref()} }
+impl<C,M:?Sized> Borrow<[C]> for MonoidalString<C,M> { #[inline] fn borrow(&self) -> &[C] {self.string.borrow()} }
 
-impl<C,A:?Sized,M:?Sized,I> Index<I> for MonoidalString<C,A,M> where Vec<C>:Index<I> {
+impl<C,M:?Sized,I> Index<I> for MonoidalString<C,M> where Vec<C>:Index<I> {
     type Output = <Vec<C> as Index<I>>::Output;
     #[inline] fn index(&self, i:I) -> &Self::Output {&self.string[i]}
 }
 
-impl<C,A:?Sized,M:?Sized> IntoIterator for MonoidalString<C,A,M> {
+impl<C,M:?Sized> IntoIterator for MonoidalString<C,M> {
     type Item = C;
     type IntoIter = IntoIter<C>;
     #[inline] fn into_iter(self) -> IntoIter<C> { self.string.into_iter() }
 }
 
-impl<C,A:MonoidRule<C>+?Sized,M:?Sized> Sum<C> for MonoidalString<C,A,M> {
-    fn sum<I:Iterator<Item=C>>(iter: I) -> Self {
-        Self { string: A::apply_iter(Vec::with_capacity(0), iter), rules: PhantomData }
-    }
-}
-
-impl<C,A:MonoidRule<C>+?Sized,M:?Sized> Sum for MonoidalString<C,A,M> {
-    fn sum<I:Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::zero(), |a,b| a+b) }
-}
-
-impl<C,A:?Sized,M:MonoidRule<C>+?Sized> Product<C> for MonoidalString<C,A,M> {
+impl<C,M:MonoidRule<C>+?Sized> Product<C> for MonoidalString<C,M> {
     fn product<I:Iterator<Item=C>>(iter: I) -> Self {
         Self { string: M::apply_iter(Vec::with_capacity(0), iter), rules: PhantomData }
     }
 }
 
-impl<C,A:?Sized,M:MonoidRule<C>+?Sized> Product for MonoidalString<C,A,M> {
+impl<C,M:MonoidRule<C>+?Sized> Product for MonoidalString<C,M> {
     fn product<I:Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::one(), |a,b| a*b) }
 }
 
-impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
+impl<C,M:?Sized> MonoidalString<C,M> {
     ///Produces an iterator over references to the letters in this element
     #[inline] pub fn iter(&self) -> Iter<C> { self.string.iter() }
 }
@@ -108,16 +98,10 @@ pub trait InvMonoidRule<C>: MonoidRule<C> {
 ///A [MonoidRule] that is order independent
 #[marker] pub trait CommutativeMonoidRule<C>: MonoidRule<C> {}
 
-///A [MonoidRule] that distributes over another
-#[marker] pub trait DistributiveMonoidRule<C,A:MonoidRule<C>>: MonoidRule<C> {}
+impl<C,M:AssociativeMonoidRule<C>+?Sized> MulAssociative for MonoidalString<C,M> {}
+impl<C,M:CommutativeMonoidRule<C>+?Sized> MulCommutative for MonoidalString<C,M> {}
 
-impl<C,A:AssociativeMonoidRule<C>+?Sized,M:?Sized> AddAssociative for MonoidalString<C,A,M> {}
-impl<C,A:CommutativeMonoidRule<C>+?Sized,M:?Sized> AddCommutative for MonoidalString<C,A,M> {}
-impl<C,A:?Sized,M:AssociativeMonoidRule<C>+?Sized> MulAssociative for MonoidalString<C,A,M> {}
-impl<C,A:?Sized,M:CommutativeMonoidRule<C>+?Sized> MulCommutative for MonoidalString<C,A,M> {}
-impl<C,A:MonoidRule<C>,M:?Sized> Distributive for MonoidalString<C,A,M> where M:DistributiveMonoidRule<C,A> {}
-
-impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
+impl<C,M:?Sized> MonoidalString<C,M> {
 
     fn apply_one<R:MonoidRule<C>+?Sized>(&mut self, rhs:C) {
         //swap out string with a dummy vec so we don't violate move rules
@@ -146,76 +130,49 @@ impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
     }
 }
 
-impl<C,A:MonoidRule<C>+?Sized,M:?Sized> AddAssign<C> for MonoidalString<C,A,M> {
-    #[inline] fn add_assign(&mut self, rhs:C) { self.apply_one::<A>(rhs) }
-}
-impl<C,A:?Sized,M:MonoidRule<C>+?Sized> MulAssign<C> for MonoidalString<C,A,M> {
+impl<C,M:MonoidRule<C>+?Sized> MulAssign<C> for MonoidalString<C,M> {
     #[inline] fn mul_assign(&mut self, rhs:C) { self.apply_one::<M>(rhs) }
 }
-impl<C,A:InvMonoidRule<C>+?Sized,M:?Sized> SubAssign<C> for MonoidalString<C,A,M> {
-    #[inline] fn sub_assign(&mut self, rhs:C) { *self+=A::invert(rhs) }
-}
-impl<C,A:?Sized,M:InvMonoidRule<C>+?Sized> DivAssign<C> for MonoidalString<C,A,M> {
+impl<C,M:InvMonoidRule<C>+?Sized> DivAssign<C> for MonoidalString<C,M> {
     #[inline] fn div_assign(&mut self, rhs:C) { *self*=M::invert(rhs) }
 }
 
-impl<C,A:MonoidRule<C>+?Sized,M:?Sized> AddAssign for MonoidalString<C,A,M> {
-    #[inline] fn add_assign(&mut self, rhs:Self) { self.apply::<A>(rhs) }
-}
-impl<C,A:?Sized,M:MonoidRule<C>+?Sized> MulAssign for MonoidalString<C,A,M> {
+impl<C,M:MonoidRule<C>+?Sized> MulAssign for MonoidalString<C,M> {
     #[inline] fn mul_assign(&mut self, rhs:Self) { self.apply::<M>(rhs) }
 }
-impl<C,A:InvMonoidRule<C>+?Sized,M:?Sized> SubAssign for MonoidalString<C,A,M> {
-    #[inline] fn sub_assign(&mut self, rhs:Self) { *self+=-rhs }
-}
-impl<C,A:?Sized,M:InvMonoidRule<C>+?Sized> DivAssign for MonoidalString<C,A,M> {
+impl<C,M:InvMonoidRule<C>+?Sized> DivAssign for MonoidalString<C,M> {
     #[inline] fn div_assign(&mut self, rhs:Self) { *self*=rhs.inv() }
 }
 
-impl<C,A:MonoidRule<C>+?Sized,M:?Sized> Zero for MonoidalString<C,A,M> {
-    #[inline] fn zero() -> Self { Default::default() }
-    #[inline] fn is_zero(&self) -> bool { self.string.len()==0 }
-}
-
-impl<C,A:?Sized,M:MonoidRule<C>+?Sized> One for MonoidalString<C,A,M> {
+impl<C,M:MonoidRule<C>+?Sized> One for MonoidalString<C,M> {
     #[inline] fn one() -> Self { Default::default() }
     #[inline] fn is_one(&self) -> bool { self.string.len()==0 }
 }
 
-impl<C,A:InvMonoidRule<C>+?Sized,M:?Sized> Neg for MonoidalString<C,A,M> {
-    type Output = Self; #[inline] fn neg(self) -> Self {self.invert::<A>()}
-}
-impl<C,A:?Sized,M:InvMonoidRule<C>+?Sized> Inv for MonoidalString<C,A,M> {
+impl<C,M:InvMonoidRule<C>+?Sized> Inv for MonoidalString<C,M> {
     type Output = Self; #[inline] fn inv(self) -> Self {self.invert::<M>()}
 }
 
-impl<C:Clone,A:?Sized,M:InvMonoidRule<C>+AssociativeMonoidRule<C>+?Sized> MonoidalString<C,A,M> {
+impl<C:Clone,M:InvMonoidRule<C>+AssociativeMonoidRule<C>+?Sized> MonoidalString<C,M> {
     ///Computes the multiplicative commutator `[a,b] = a⁻¹b⁻¹ab`
     pub fn commutator(self, rhs:Self) -> Self { self.clone().inv()*rhs.clone()*self*rhs }
 }
 
-impl<C:Clone,A:InvMonoidRule<C>+AssociativeMonoidRule<C>+?Sized,M:?Sized> MonoidalString<C,A,M> {
-    ///Computes the additive commutator `[a,b] = -a-b+a+b`
-    pub fn add_commutator(self, rhs:Self) -> Self { -self.clone() - rhs.clone() + self + rhs }
-}
-
-from_assign!(impl<C,A,M,X> Add<X>.add for MonoidalString<C,A,M> with += where A:?Sized, M:?Sized, Self:AddAssign<X>);
-from_assign!(impl<C,A,M,X> Sub<X>.sub for MonoidalString<C,A,M> with -= where A:?Sized, M:?Sized, Self:SubAssign<X>);
-from_assign!(impl<C,A,M,X> Mul<X>.mul for MonoidalString<C,A,M> with *= where A:?Sized, M:?Sized, Self:MulAssign<X>);
-from_assign!(impl<C,A,M,X> Div<X>.div for MonoidalString<C,A,M> with /= where A:?Sized, M:?Sized, Self:DivAssign<X>);
+from_assign!(impl<C,M,X> Mul<X>.mul for MonoidalString<C,M> with *= where M:?Sized, Self:MulAssign<X>);
+from_assign!(impl<C,M,X> Div<X>.div for MonoidalString<C,M> with /= where M:?Sized, Self:DivAssign<X>);
 
 #[marker] #[doc(hidden)] pub trait PowMarker<T> {}
-impl<Z:IntegerSubset,C,A:?Sized,M:InvMonoidRule<C>+?Sized> PowMarker<Z> for MonoidalString<C,A,M> {}
-impl<Z:Natural,C,A:?Sized,M:MonoidRule<C>+?Sized> PowMarker<Z> for MonoidalString<C,A,M> {}
+impl<Z:IntegerSubset,C,M:InvMonoidRule<C>+?Sized> PowMarker<Z> for MonoidalString<C,M> {}
+impl<Z:Natural,C,M:MonoidRule<C>+?Sized> PowMarker<Z> for MonoidalString<C,M> {}
 
-impl<Z:IntegerSubset,C:Clone,A:?Sized,M:MonoidRule<C>+?Sized> Pow<Z> for MonoidalString<C,A,M>
+impl<Z:IntegerSubset,C:Clone,M:MonoidRule<C>+?Sized> Pow<Z> for MonoidalString<C,M>
 where Self:PowMarker<Z> + MulAssociative
 {
     type Output = Self;
     default fn pow(self, p:Z) -> Self { repeated_squaring(self, p.as_unsigned()) }
 }
 
-impl<Z:IntegerSubset,C:Clone,A:?Sized,M:InvMonoidRule<C>+?Sized> Pow<Z> for MonoidalString<C,A,M>
+impl<Z:IntegerSubset,C:Clone,M:InvMonoidRule<C>+?Sized> Pow<Z> for MonoidalString<C,M>
 where Self:PowMarker<Z> + MulAssociative
 {
     fn pow(self, p:Z) -> Self { repeated_squaring_inv(self, p) }
