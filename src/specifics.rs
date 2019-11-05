@@ -95,7 +95,7 @@ pub type FreeGroup<C> = MonoidalString<FreeInv<C>,!,InvRule>;
 ///
 ///Represents a free symbol raised to some power
 ///
-///This is used in [FreeMonoidPow] mainly as a way to compress the size-footprint of a
+///This is used in [FreePowMonoid] mainly as a way to compress the size-footprint of a
 ///[FreeMonoid] by combining repeated elements under an integral exponent, but the option for more
 ///exotic exponents is also available
 ///
@@ -142,37 +142,37 @@ impl<C:Eq,P:Neg<Output=P>> Inv for FreePow<C,P> {
 }
 
 impl<C:Eq,P:Add<Output=P>> Mul for FreePow<C,P> {
-    type Output = FreeMonoidPow<C,P>;
-    fn mul(self, rhs:Self) -> FreeMonoidPow<C,P> { FreeMonoidPow::from(self) * rhs }
+    type Output = FreePowMonoid<C,P>;
+    fn mul(self, rhs:Self) -> FreePowMonoid<C,P> { FreePowMonoid::from(self) * rhs }
 }
 
 impl<C:Eq,P:Add<Output=P>+One> Mul<C> for FreePow<C,P> {
-    type Output = FreeMonoidPow<C,P>;
-    fn mul(self, rhs:C) -> FreeMonoidPow<C,P> { self * Self::from(rhs) }
+    type Output = FreePowMonoid<C,P>;
+    fn mul(self, rhs:C) -> FreePowMonoid<C,P> { self * Self::from(rhs) }
 }
 
-impl<C:Eq,P:Add<Output=P>> Mul<FreeMonoidPow<C,P>> for FreePow<C,P> {
-    type Output = FreeMonoidPow<C,P>;
-    fn mul(self, rhs:FreeMonoidPow<C,P>) -> FreeMonoidPow<C,P> { FreeMonoidPow::from(self) * rhs }
+impl<C:Eq,P:Add<Output=P>> Mul<FreePowMonoid<C,P>> for FreePow<C,P> {
+    type Output = FreePowMonoid<C,P>;
+    fn mul(self, rhs:FreePowMonoid<C,P>) -> FreePowMonoid<C,P> { FreePowMonoid::from(self) * rhs }
 }
 
 impl<C:Eq,P:Add<Output=P>+Neg<Output=P>> Div for FreePow<C,P> {
-    type Output = FreeMonoidPow<C,P>;
-    fn div(self, rhs:Self) -> FreeMonoidPow<C,P> { self * rhs.inv() }
+    type Output = FreePowMonoid<C,P>;
+    fn div(self, rhs:Self) -> FreePowMonoid<C,P> { self * rhs.inv() }
 }
 
 impl<C:Eq,P:Add<Output=P>+One+Neg<Output=P>> Div<C> for FreePow<C,P> {
-    type Output = FreeMonoidPow<C,P>;
-    fn div(self, rhs:C) -> FreeMonoidPow<C,P> { self / Self::from(rhs) }
+    type Output = FreePowMonoid<C,P>;
+    fn div(self, rhs:C) -> FreePowMonoid<C,P> { self / Self::from(rhs) }
 }
 
-impl<C:Eq,P:Add<Output=P>+Neg<Output=P>> Div<FreeMonoidPow<C,P>> for FreePow<C,P> {
-    type Output = FreeMonoidPow<C,P>;
-    fn div(self, rhs:FreeMonoidPow<C,P>) -> FreeMonoidPow<C,P> { FreeMonoidPow::from(self) / rhs }
+impl<C:Eq,P:Add<Output=P>+Neg<Output=P>> Div<FreePowMonoid<C,P>> for FreePow<C,P> {
+    type Output = FreePowMonoid<C,P>;
+    fn div(self, rhs:FreePowMonoid<C,P>) -> FreePowMonoid<C,P> { FreePowMonoid::from(self) / rhs }
 }
 
 ///A [FreeModule] or [FreeGroup], but where repeated letters are grouped together using exponents
-pub type FreeMonoidPow<C,P> = MonoidalString<FreePow<C,P>,!,PowRule>;
+pub type FreePowMonoid<C,P> = MonoidalString<FreePow<C,P>,!,PowRule>;
 
 
 ///Multiplication of terms using a type's intrinsic [addition](Add) operation
