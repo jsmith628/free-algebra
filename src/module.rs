@@ -8,7 +8,7 @@ use std::collections::hash_map;
 #[derivative(Default(bound=""))]
 #[derivative(PartialEq, Eq, Hash)]
 pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
-    #[derivative(Hash(hash_with="crate::map_hash"))]
+    #[derivative(Hash(bound="HashMap<T,R>:Hash"))]
     #[derivative(Default(value="HashMap::with_capacity(0)"))]
     terms: HashMap<T,R>,
 
