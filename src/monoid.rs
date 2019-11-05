@@ -40,17 +40,30 @@ impl<C,M:?Sized> IntoIterator for MonoidalString<C,M> {
     #[inline] fn into_iter(self) -> IntoIter<C> { self.string.into_iter() }
 }
 
+impl<C,M:MonoidRule<C>+?Sized> Extend<C> for MonoidalString<C,M> {
+    fn extend<I:IntoIterator<Item=C>>(&mut self, iter:I) { self.apply_iter::<M,_>(iter.into_iter()) }
+}
+
+impl<C,M:?Sized,T> FromIterator<T> for MonoidalString<C,M> where Self:Product<T> {
+    fn from_iter<I:IntoIterator<Item=T>>(iter:I) -> Self { iter.into_iter().product() }
+}
+
 impl<C,M:MonoidRule<C>+?Sized> Product<C> for MonoidalString<C,M> {
     fn product<I:Iterator<Item=C>>(iter: I) -> Self {
-        Self { string: M::apply_iter(Vec::with_capacity(0), iter), rules: PhantomData }
+        let mut dest:Self = One::one();
+        dest.extend(iter);
+        dest
     }
 }
 
 impl<C,M:MonoidRule<C>+?Sized> Product for MonoidalString<C,M> {
-    fn product<I:Iterator<Item=Self>>(iter: I) -> Self { iter.fold(Self::one(), |a,b| a*b) }
+    fn product<I:Iterator<Item=Self>>(iter: I) -> Self { iter.flatten().product() }
 }
 
 impl<C,M:?Sized> MonoidalString<C,M> {
+    ///Returns the number of letters in this monoidal-string
+    #[inline] pub fn len(&self) -> usize { self.string.len() }
+
     ///Produces an iterator over references to the letters in this element
     #[inline] pub fn iter(&self) -> Iter<C> { self.string.iter() }
 }
@@ -119,6 +132,15 @@ impl<C,M:?Sized> MonoidalString<C,M> {
 
         //apply the monoid rule
         self.string = R::apply_many(temp, rhs.string);
+    }
+
+    fn apply_iter<R:MonoidRule<C>+?Sized, I:Iterator<Item=C>>(&mut self, i:I) {
+        //swap out string with a dummy vec so we don't violate move rules
+        let mut temp = Vec::with_capacity(0);
+        ::std::mem::swap(&mut self.string, &mut temp);
+
+        //apply the monoid rule
+        self.string = R::apply_iter(temp, i);
     }
 
     ///An operation agnostic method for computing inverses
