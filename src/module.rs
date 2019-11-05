@@ -170,6 +170,13 @@ impl<T:Hash+Eq,R:SubAssign,A:?Sized> SubAssign<(R,T)> for ModuleString<R,T,A> {
     fn sub_assign(&mut self, rhs:(R,T)) {self.insert_term(rhs, |r1, r2| *r1-=r2)}
 }
 
+impl<T:Hash+Eq,R:AddAssign+One,A:?Sized> AddAssign<T> for ModuleString<R,T,A> {
+    fn add_assign(&mut self, rhs:T) {*self+=(R::one(),rhs)}
+}
+impl<T:Hash+Eq,R:SubAssign+One,A:?Sized> SubAssign<T> for ModuleString<R,T,A> {
+    fn sub_assign(&mut self, rhs:T) {*self-=(R::one(),rhs)}
+}
+
 impl<T:Hash+Eq,R:MulAssign+Clone,A:?Sized> MulAssign<R> for ModuleString<R,T,A> {
     fn mul_assign(&mut self, rhs:R) {
         for r2 in self.terms.values_mut() { *r2 *= rhs.clone() }
