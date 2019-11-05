@@ -16,7 +16,10 @@ pub struct MonoidalString<C,A:?Sized,M:?Sized> {
     rules: PhantomData<(Box<A>,Box<M>)>
 }
 
+///Iterates over immutable references of the letters of a [MonoidalString]
 pub type Iter<'a,C> = std::slice::Iter<'a,C>;
+
+///Iterates over the letters of a [MonoidalString]
 pub type IntoIter<C> = <Vec<C> as IntoIterator>::IntoIter;
 
 impl<C,A:?Sized,M:?Sized> From<C> for MonoidalString<C,A,M> {
@@ -58,30 +61,61 @@ impl<C,A:?Sized,M:MonoidRule<C>+?Sized> Product for MonoidalString<C,A,M> {
 }
 
 impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
+    ///Produces an iterator over references to the letters in this element
     #[inline] pub fn iter(&self) -> Iter<C> { self.string.iter() }
 }
 
+///
+///Dictates a rule for how to multiply or add letters to a [MonoidalString]'s word
+///
+///The simplest possible version of this simply applies multiplication as simple concatenation,
+///but this trait is robust enough to support more complex operations such as for [FreeGroup]
+///
 pub trait MonoidRule<C> {
-    fn apply(string: Vec<C>, letter: C) -> Vec<C>;
-    fn apply_many(string1: Vec<C>, string2: Vec<C>) -> Vec<C> {Self::apply_iter(string1, string2.into_iter())}
-    fn apply_iter<I:Iterator<Item=C>>(mut string: Vec<C>, letters: I) -> Vec<C> {
-        string.reserve(letters.size_hint().0);
-        letters.fold(string, |s,c| Self::apply(s,c))
+    ///Applies the operation rule to the product of a word and a single letter
+    fn apply(word: Vec<C>, letter: C) -> Vec<C>;
+
+    ///
+    ///Applies the operation rule to the product of two words
+    ///
+    ///By default, this computes the result by individually applying the rule to each letter of the
+    ///second word to the first using [MonoidRule::apply]
+    ///
+    fn apply_many(word1: Vec<C>, word2: Vec<C>) -> Vec<C> {Self::apply_iter(word1, word2.into_iter())}
+
+    ///
+    ///Applies the operation rule to the product of a word and a sequence of letters
+    ///
+    ///By default, this computes the result by individually applying the rule to each letter in
+    ///sequence to the first using [MonoidRule::apply]
+    ///
+    fn apply_iter<I:Iterator<Item=C>>(mut word: Vec<C>, letters: I) -> Vec<C> {
+        word.reserve(letters.size_hint().0);
+        letters.fold(word, |s,c| Self::apply(s,c))
     }
 
 }
 
-pub trait InvMonoidRule<C>: MonoidRule<C> { fn invert(letter: C) -> C; }
+///A [MonoidRule] where each letter has a notion of an inverse
+pub trait InvMonoidRule<C>: MonoidRule<C> {
+    ///Inverts a letter `x` such that `x * x.invert() == 1`
+    fn invert(letter: C) -> C;
+}
 
-#[marker] pub trait AssociativeRule<C>: MonoidRule<C> {}
-#[marker] pub trait CommutativeRule<C>: MonoidRule<C> {}
-#[marker] pub trait DistributiveRule<C,A:MonoidRule<C>>: MonoidRule<C> {}
+///A [MonoidRule] that is evaluation order independent
+#[marker] pub trait AssociativeMonoidRule<C>: MonoidRule<C> {}
 
-impl<C,A:AssociativeRule<C>+?Sized,M:?Sized> AddAssociative for MonoidalString<C,A,M> {}
-impl<C,A:CommutativeRule<C>+?Sized,M:?Sized> AddCommutative for MonoidalString<C,A,M> {}
-impl<C,A:?Sized,M:AssociativeRule<C>+?Sized> MulAssociative for MonoidalString<C,A,M> {}
-impl<C,A:?Sized,M:CommutativeRule<C>+?Sized> MulCommutative for MonoidalString<C,A,M> {}
-impl<C,A:MonoidRule<C>,M:?Sized> Distributive for MonoidalString<C,A,M> where M:DistributiveRule<C,A> {}
+///A [MonoidRule] that is order independent
+#[marker] pub trait CommutativeMonoidRule<C>: MonoidRule<C> {}
+
+///A [MonoidRule] that distributes over another
+#[marker] pub trait DistributiveMonoidRule<C,A:MonoidRule<C>>: MonoidRule<C> {}
+
+impl<C,A:AssociativeMonoidRule<C>+?Sized,M:?Sized> AddAssociative for MonoidalString<C,A,M> {}
+impl<C,A:CommutativeMonoidRule<C>+?Sized,M:?Sized> AddCommutative for MonoidalString<C,A,M> {}
+impl<C,A:?Sized,M:AssociativeMonoidRule<C>+?Sized> MulAssociative for MonoidalString<C,A,M> {}
+impl<C,A:?Sized,M:CommutativeMonoidRule<C>+?Sized> MulCommutative for MonoidalString<C,A,M> {}
+impl<C,A:MonoidRule<C>,M:?Sized> Distributive for MonoidalString<C,A,M> where M:DistributiveMonoidRule<C,A> {}
 
 impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
 
@@ -103,6 +137,7 @@ impl<C,A:?Sized,M:?Sized> MonoidalString<C,A,M> {
         self.string = R::apply_many(temp, rhs.string);
     }
 
+    ///An operation agnostic method for computing inverses
     fn invert<R:InvMonoidRule<C>+?Sized>(self) -> Self {
         Self {
             string: R::apply_iter(Vec::with_capacity(0), self.string.into_iter().rev().map(|c| R::invert(c))),
@@ -154,11 +189,13 @@ impl<C,A:?Sized,M:InvMonoidRule<C>+?Sized> Inv for MonoidalString<C,A,M> {
     type Output = Self; #[inline] fn inv(self) -> Self {self.invert::<M>()}
 }
 
-impl<C:Clone,A:?Sized,M:InvMonoidRule<C>+AssociativeRule<C>+?Sized> MonoidalString<C,A,M> {
+impl<C:Clone,A:?Sized,M:InvMonoidRule<C>+AssociativeMonoidRule<C>+?Sized> MonoidalString<C,A,M> {
+    ///Computes the multiplicative commutator `[a,b] = a⁻¹b⁻¹ab`
     pub fn commutator(self, rhs:Self) -> Self { self.clone().inv()*rhs.clone()*self*rhs }
 }
 
-impl<C:Clone,A:InvMonoidRule<C>+AssociativeRule<C>+?Sized,M:?Sized> MonoidalString<C,A,M> {
+impl<C:Clone,A:InvMonoidRule<C>+AssociativeMonoidRule<C>+?Sized,M:?Sized> MonoidalString<C,A,M> {
+    ///Computes the additive commutator `[a,b] = -a-b+a+b`
     pub fn add_commutator(self, rhs:Self) -> Self { -self.clone() - rhs.clone() + self + rhs }
 }
 
@@ -185,7 +222,7 @@ where Self:PowMarker<Z> + MulAssociative
 }
 
 
-impl<C> AssociativeRule<C> for () {}
+impl<C> AssociativeMonoidRule<C> for () {}
 impl<C> MonoidRule<C> for () {
     fn apply(mut string: Vec<C>, letter: C) -> Vec<C> {string.push(letter); string}
     fn apply_many(mut string1: Vec<C>, mut string2: Vec<C>) -> Vec<C> {
@@ -196,13 +233,20 @@ impl<C> MonoidRule<C> for () {
     }
 }
 
+///
+///Represents a free symbol raised to some integral power
+///
+///This meant to provide a way to invert a symbol so that is can be used to construct the [FreeGroup]
+///type and to save space in free-monoids that may have many repeated symbols
+///
 #[derive(Derivative)]
 #[derivative(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub struct FreePow<C:Eq,Z:IntegerSubset>(pub C,pub Z);
 
+///Provides multiplication between [FreeGroup] elements using addition of exponents on equal bases
 pub struct PowRule;
 
-impl<C:Eq,Z:IntegerSubset> AssociativeRule<FreePow<C,Z>> for PowRule {}
+impl<C:Eq,Z:IntegerSubset> AssociativeMonoidRule<FreePow<C,Z>> for PowRule {}
 impl<C:Eq,Z:IntegerSubset> MonoidRule<FreePow<C,Z>> for PowRule {
     fn apply(mut string: Vec<FreePow<C,Z>>, letter: FreePow<C,Z>) -> Vec<FreePow<C,Z>> {
         if string.last().map_or(false, |l| l.0==letter.0) {
@@ -258,5 +302,14 @@ impl<C:Eq,Z:Integer> Div<FreeGroup<C,Z>> for FreePow<C,Z> {
     fn div(self, rhs:FreeGroup<C,Z>) -> FreeGroup<C,Z> { FreeGroup::from(self) / rhs }
 }
 
+///
+///A [monoid](MulMonoid) constructed from free multiplication (or addition) of elements of a set
+///
+///Concretely, given a set `C`, we construct the free-monoid of `C` as the set of all finite lists
+///of members of `C` where multiplication is given by concatenation. In other words, it's basically
+///[`Vec<C>`](Vec) but with `a*b == {a.append(&mut b); a}`.
+///
 pub type FreeMonoid<C> = MonoidalString<C,(),()>;
+
+///A [FreeMonoid], but where each element can be symbolically inverted
 pub type FreeGroup<C,Z> = MonoidalString<FreePow<C,Z>,!,PowRule>;

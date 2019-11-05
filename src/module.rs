@@ -17,9 +17,20 @@ pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
     rule: PhantomData<Box<A>>
 }
 
+///Iterates over references to the terms and coefficients of a [ModuleString]
 pub type Iter<'a,R,T> = Map<hash_map::Iter<'a,T,R>, fn((&'a T,&'a R)) -> (&'a R,&'a T)>;
+
+///Iterates over terms and coefficients of a [ModuleString]
 pub type IntoIter<R,T> = Map<hash_map::IntoIter<T,R>, fn((T,R)) -> (R,T)>;
 
+///
+///Iterates over mutable references to the terms and coefficients of a [ModuleString]
+///
+///Note that this causes a reallocation of the internal [HashMap] since it's possible that an
+///element mutation could create an illegal state if not reconstructed from the sums of the mutated
+///terms. (For example, one could easily mutate two terms to have the same `T` value and thus
+///potentially overwrite the coeffient of one of them if not handled properly)
+///
 pub struct IterMut<'a, R:AddAssign, T:Hash+Eq, A:?Sized> {
     dest_ref: &'a mut ModuleString<R,T,A>,
     next: Option<(R,T)>,
@@ -68,6 +79,7 @@ impl<T:Hash+Eq,R,A:?Sized,I> Index<I> for ModuleString<R,T,A> where HashMap<T,R>
 }
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
+    ///Returns the number of terms in this module element
     pub fn num_terms(&self) -> usize {self.terms.len()}
 }
 
@@ -78,7 +90,10 @@ impl<T:Hash+Eq,R,A:?Sized> IntoIterator for ModuleString<R,T,A> {
 }
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
+    ///Produces an iterator over references to the terms and references in this element
     pub fn iter<'a>(&'a self) -> Iter<'a,R,T> { self.terms.iter().map(|(t,r)| (r,t)) }
+
+    ///Produces an iterator over mutable references to the terms and references in this element
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a,R,T,A> where R:AddAssign {
         let mut temp = Self { terms: HashMap::with_capacity(self.terms.len()), rule:PhantomData };
         ::std::mem::swap(self, &mut temp);
@@ -108,6 +123,7 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
         rhs.into_iter().for_each(|term| self.insert_term(term, f));
     }
 
+    ///removes all terms with a coeffient of zero
     fn clean(&mut self) { self.terms.retain(|r,_| !r._is_zero()); }
 }
 
@@ -143,16 +159,29 @@ impl<T:Hash+Eq,R,A:?Sized,K> Product<K> for ModuleString<R,T,A> where Self:Mul<K
     fn product<I:Iterator<Item=K>>(iter:I) -> Self { iter.into_iter().fold(Self::one(), |m,k| m*k) }
 }
 
-pub trait AlgebraRule<R,T> { fn apply(t1:T, t2:T) -> (Option<R>,T); }
+///Dictates a rule for how to multiply terms in a [ModuleString]
+pub trait AlgebraRule<R,T> {
+    ///Multiplies two terms together to produce another `T` and an optional coeffient
+    fn apply(t1:T, t2:T) -> (Option<R>,T);
+}
+
+///An [AlgebraRule] that is evaluation order independent
+pub trait AssociativeAlgebraRule<R,T>: AlgebraRule<R,T> {}
+///An [AlgebraRule] that is order independent
+pub trait CommutativeMonoidRule<R,T>: AlgebraRule<R,T> {}
+
+///An [AlgebraRule] where a term can be one
 pub trait UnitalAlgebraRule<R,T>: AlgebraRule<R,T> {
+    ///Creates a `T` with a value of one
     fn one() -> T;
+    ///Determines if a `T` is equal to one
     fn is_one(t:&T) -> bool;
 }
 
 impl<T:Hash+Eq,R:AddAssociative,A:?Sized> AddAssociative for ModuleString<R,T,A> {}
 impl<T:Hash+Eq,R:AddCommutative,A:?Sized> AddCommutative for ModuleString<R,T,A> {}
-impl<T:Hash+Eq,R:MulAssociative,A:?Sized+MulAssociative> MulAssociative for ModuleString<R,T,A> {}
-impl<T:Hash+Eq,R:MulCommutative,A:?Sized+MulCommutative> MulCommutative for ModuleString<R,T,A> {}
+impl<T:Hash+Eq,R:MulAssociative,A:?Sized+AssociativeAlgebraRule<R,T>> MulAssociative for ModuleString<R,T,A> {}
+impl<T:Hash+Eq,R:MulCommutative,A:?Sized+CommutativeMonoidRule<R,T>> MulCommutative for ModuleString<R,T,A> {}
 
 impl<T:Hash+Eq,R:Distributive,A:?Sized> Distributive for ModuleString<R,T,A> {}
 
@@ -245,12 +274,19 @@ impl<T:Hash+Eq+Clone,R:Semiring,A:?Sized+AlgebraRule<R,T>> MulAssign for ModuleS
     }
 }
 
-impl<Z:Natural,T:Hash+Eq+Clone,R:PartialEq+UnitalSemiring,A:?Sized+UnitalAlgebraRule<R,T>+MulAssociative> Pow<Z> for ModuleString<R,T,A> {
+impl<Z,R,T,A> Pow<Z> for ModuleString<R,T,A> where
+    Z:Natural,
+    T:Hash+Eq+Clone,
+    R:PartialEq+UnitalSemiring,
+    A:?Sized+UnitalAlgebraRule<R,T>+AssociativeAlgebraRule<R,T>
+{
     type Output = Self;
     fn pow(self, p:Z) -> Self { repeated_squaring(self, p) }
 }
 
+///Provides multiplication of terms via the type's intrinsic [addition](Add) operation
 pub struct RuleFromAdd;
+///Provides multiplication of terms via the type's intrinsic [multiplication](Mul) operation
 pub struct RuleFromMul;
 
 impl<R,T:Add<Output=T>> AlgebraRule<R,T> for RuleFromAdd {
@@ -269,7 +305,23 @@ impl<R,T:Mul<Output=T>+One+PartialEq> UnitalAlgebraRule<R,T> for RuleFromMul {
     fn is_one(t:&T) -> bool { t.is_one() }
 }
 
+///A [FreeModule] over some monoid, but with a multiplication between elements given using the monoid operation
 pub type MonoidRing<R,M> = MonoidalString<R,M,RuleFromMul>;
 
+///
+///A [module](RingModule) over a ring constructed from free addition scalar-multiplication of elements of a set
+///
+///Concretely, given a set `T` and ring `R`, we construct the free-module of `T` over `R` as
+///the set of linear combination over elements in `T` where the scalars are in `R`.
+///
 pub type FreeModule<R,T> = ModuleString<R,T,!>;
+
+///
+///A [module](RingModule) over a ring constructed from free multiplication and addition of elements of a set
+///
+///Concretely, this is a [MonoidRing] over `R` of the [FreeMonoid] over `T`. However, this is
+///effectively just the set of polynomials with coeffients in `R` where the variables are all the
+///elements of `T` (and where we don't assume associativity or commutivity of the
+///variables).
+///
 pub type FreeAlgebra<R,T> = MonoidRing<R,FreeMonoid<T>>;

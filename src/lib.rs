@@ -20,6 +20,7 @@ use std::hash::Hash;
 
 use std::iter::*;
 
+///Implements an operator overload using the assign variant
 macro_rules! from_assign {
 
     (impl<$($T:ident),*> $Trait:ident<$RHS:ident>.$fun:ident for $ty:ident<$($U:ident),*> with $op:tt $($where:tt)*) => {
