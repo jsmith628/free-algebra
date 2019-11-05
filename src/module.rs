@@ -101,10 +101,6 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
     }
 }
 
-trait IsZero { fn _is_zero(&self) -> bool; }
-impl<T> IsZero for T { default fn _is_zero(&self) -> bool { false } }
-impl<T:Zero> IsZero for T { default fn _is_zero(&self) -> bool { self.is_zero() } }
-
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
 
     fn insert_term<F:Fn(&mut R, R)>(&mut self, rhs:(R,T), f:F) {

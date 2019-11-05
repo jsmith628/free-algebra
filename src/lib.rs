@@ -32,6 +32,11 @@ macro_rules! from_assign {
 
 }
 
+
+pub(self) trait IsZero { fn _is_zero(&self) -> bool; }
+impl<T> IsZero for T { default fn _is_zero(&self) -> bool { false } }
+impl<T:Zero> IsZero for T { default fn _is_zero(&self) -> bool { self.is_zero() } }
+
 pub use self::specifics::*;
 mod specifics;
 
