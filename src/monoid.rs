@@ -13,7 +13,7 @@ pub struct MonoidalString<C,M:?Sized> {
 
     #[derivative(PartialEq="ignore", Hash="ignore")]
     #[derivative(Debug="ignore")]
-    rules: PhantomData<M>
+    rule: PhantomData<M>
 }
 
 ///Iterates over immutable references of the letters of a [MonoidalString]
@@ -22,8 +22,43 @@ pub type Iter<'a,C> = std::slice::Iter<'a,C>;
 ///Iterates over the letters of a [MonoidalString]
 pub type IntoIter<C> = <Vec<C> as IntoIterator>::IntoIter;
 
+///
+///Iterates over mutable references to the letters of a [MonoidalString]
+///
+///Note that this causes a reallocation of the internal [Vec] since it's possible that an
+///element mutation could create an illegal state if not reconstructed from the sums of the mutated
+///terms.
+///
+pub struct IterMut<'a, C, M:MonoidRule<C>+?Sized> {
+    dest_ref: &'a mut MonoidalString<C,M>,
+    next: Option<C>,
+    iter: IntoIter<C>
+}
+
+impl<'a,C,M:MonoidRule<C>+?Sized> FusedIterator for IterMut<'a,C,M> {}
+impl<'a,C,M:MonoidRule<C>+?Sized> ExactSizeIterator for IterMut<'a,C,M> {}
+impl<'a,C,M:MonoidRule<C>+?Sized> Iterator for IterMut<'a,C,M> {
+    type Item = &'a mut C;
+    fn next(&mut self) -> Option<&'a mut C> {
+        self.next.take().map(|c| *self.dest_ref *= c);
+        self.next = self.iter.next();
+
+        //we know that the given reference is lifetime 'a because in order for next to be dropped,
+        //either self must be borrowed mutably again or dropped, which cannot happen while the reference lives
+        self.next.as_mut().map(|c| unsafe {&mut *(c as *mut C)} )
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+}
+
+impl<'a,C,M:MonoidRule<C>+?Sized> Drop for IterMut<'a,C,M> {
+    fn drop(&mut self) {
+        loop { if let None = self.next() {break;} }
+    }
+}
+
 impl<C,M:?Sized> From<C> for MonoidalString<C,M> {
-    #[inline] fn from(c:C) -> Self {MonoidalString{string:vec![c],rules:PhantomData}}
+    #[inline] fn from(c:C) -> Self {MonoidalString{string:vec![c],rule:PhantomData}}
 }
 
 impl<C,M:?Sized> AsRef<[C]> for MonoidalString<C,M> { #[inline] fn as_ref(&self) -> &[C] {self.string.as_ref()} }
@@ -66,6 +101,13 @@ impl<C,M:?Sized> MonoidalString<C,M> {
 
     ///Produces an iterator over references to the letters in this element
     #[inline] pub fn iter(&self) -> Iter<C> { self.string.iter() }
+
+    ///Produces an iterator over mutable references to the letters in this element
+    #[inline] pub fn iter_mut(&mut self) -> IterMut<C,M> where M:MonoidRule<C> {
+        let mut temp = Self { string: Vec::with_capacity(self.len()), rule:PhantomData };
+        ::std::mem::swap(self, &mut temp);
+        IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
+    }
 }
 
 ///
@@ -117,7 +159,7 @@ impl<C,M:CommutativeMonoidRule<C>+?Sized> MulCommutative for MonoidalString<C,M>
 impl<C,M:?Sized> MonoidalString<C,M> {
 
     fn apply_one<R:MonoidRule<C>+?Sized>(&mut self, rhs:C) {
-        //swap out string with a dummy vec so we don't violate move rules
+        //swap out string with a dummy vec so we don't violate move rule
         let mut temp = Vec::with_capacity(0);
         ::std::mem::swap(&mut self.string, &mut temp);
 
@@ -126,7 +168,7 @@ impl<C,M:?Sized> MonoidalString<C,M> {
     }
 
     fn apply<R:MonoidRule<C>+?Sized>(&mut self, rhs:Self) {
-        //swap out string with a dummy vec so we don't violate move rules
+        //swap out string with a dummy vec so we don't violate move rule
         let mut temp = Vec::with_capacity(0);
         ::std::mem::swap(&mut self.string, &mut temp);
 
@@ -135,7 +177,7 @@ impl<C,M:?Sized> MonoidalString<C,M> {
     }
 
     fn apply_iter<R:MonoidRule<C>+?Sized, I:Iterator<Item=C>>(&mut self, i:I) {
-        //swap out string with a dummy vec so we don't violate move rules
+        //swap out string with a dummy vec so we don't violate move rule
         let mut temp = Vec::with_capacity(0);
         ::std::mem::swap(&mut self.string, &mut temp);
 
@@ -147,7 +189,7 @@ impl<C,M:?Sized> MonoidalString<C,M> {
     fn invert<R:InvMonoidRule<C>+?Sized>(self) -> Self {
         Self {
             string: R::apply_iter(Vec::with_capacity(0), self.string.into_iter().rev().map(|c| R::invert(c))),
-            rules: PhantomData
+            rule: PhantomData
         }
     }
 }

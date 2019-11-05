@@ -55,8 +55,7 @@ impl<'a,T:Hash+Eq,R:AddAssign,A:?Sized> Iterator for IterMut<'a,R,T,A> {
 
 impl<'a,T:Hash+Eq,R:AddAssign,A:?Sized> Drop for IterMut<'a,R,T,A> {
     fn drop(&mut self) {
-        self.next.take().map(|t| *self.dest_ref += t);
-        for t in &mut self.iter { *self.dest_ref += t }
+        loop { if let None = self.next() {break;} }
     }
 }
 
@@ -95,7 +94,7 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
 
     ///Produces an iterator over mutable references to the terms and references in this element
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a,R,T,A> where R:AddAssign {
-        let mut temp = Self { terms: HashMap::with_capacity(self.terms.len()), rule:PhantomData };
+        let mut temp = Self { terms: HashMap::with_capacity(self.num_terms()), rule:PhantomData };
         ::std::mem::swap(self, &mut temp);
         IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
     }
