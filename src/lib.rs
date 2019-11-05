@@ -32,5 +32,8 @@ macro_rules! from_assign {
 
 }
 
+pub use self::specifics::*;
+mod specifics;
+
 pub mod monoid;
 pub mod module;
