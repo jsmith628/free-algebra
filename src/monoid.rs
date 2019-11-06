@@ -76,7 +76,9 @@ impl<C,M:?Sized> IntoIterator for MonoidalString<C,M> {
 }
 
 impl<C,M:MonoidRule<C>+?Sized> Extend<C> for MonoidalString<C,M> {
-    fn extend<I:IntoIterator<Item=C>>(&mut self, iter:I) { self.apply_iter::<M,_>(iter.into_iter()) }
+    fn extend<I:IntoIterator<Item=C>>(&mut self, iter:I) {
+        self.apply_fn(|string| M::apply_iter(string, iter.into_iter()))
+    }
 }
 
 impl<C,M:?Sized,T> FromIterator<T> for MonoidalString<C,M> where Self:Product<T> {
@@ -158,31 +160,14 @@ impl<C,M:CommutativeMonoidRule<C>+?Sized> MulCommutative for MonoidalString<C,M>
 
 impl<C,M:?Sized> MonoidalString<C,M> {
 
-    fn apply_one<R:MonoidRule<C>+?Sized>(&mut self, rhs:C) {
+    ///Applies a move-semantic function by reference
+    fn apply_fn<F:FnOnce(Vec<C>)->Vec<C>>(&mut self, f:F) {
         //swap out string with a dummy vec so we don't violate move rule
         let mut temp = Vec::with_capacity(0);
         ::std::mem::swap(&mut self.string, &mut temp);
 
         //apply the monoid rule
-        self.string = R::apply(temp,rhs);
-    }
-
-    fn apply<R:MonoidRule<C>+?Sized>(&mut self, rhs:Self) {
-        //swap out string with a dummy vec so we don't violate move rule
-        let mut temp = Vec::with_capacity(0);
-        ::std::mem::swap(&mut self.string, &mut temp);
-
-        //apply the monoid rule
-        self.string = R::apply_many(temp, rhs.string);
-    }
-
-    fn apply_iter<R:MonoidRule<C>+?Sized, I:Iterator<Item=C>>(&mut self, i:I) {
-        //swap out string with a dummy vec so we don't violate move rule
-        let mut temp = Vec::with_capacity(0);
-        ::std::mem::swap(&mut self.string, &mut temp);
-
-        //apply the monoid rule
-        self.string = R::apply_iter(temp, i);
+        self.string = f(temp);
     }
 
     ///An operation agnostic method for computing inverses
@@ -195,14 +180,18 @@ impl<C,M:?Sized> MonoidalString<C,M> {
 }
 
 impl<C,M:MonoidRule<C>+?Sized> MulAssign<C> for MonoidalString<C,M> {
-    #[inline] fn mul_assign(&mut self, rhs:C) { self.apply_one::<M>(rhs) }
+    fn mul_assign(&mut self, rhs:C) {
+        self.apply_fn(|string| M::apply(string,rhs));
+    }
 }
 impl<C,M:InvMonoidRule<C>+?Sized> DivAssign<C> for MonoidalString<C,M> {
     #[inline] fn div_assign(&mut self, rhs:C) { *self*=M::invert(rhs) }
 }
 
 impl<C,M:MonoidRule<C>+?Sized> MulAssign for MonoidalString<C,M> {
-    #[inline] fn mul_assign(&mut self, rhs:Self) { self.apply::<M>(rhs) }
+    fn mul_assign(&mut self, rhs:Self) {
+        self.apply_fn(|string| M::apply_many(string,rhs.string));
+    }
 }
 impl<C,M:InvMonoidRule<C>+?Sized> DivAssign for MonoidalString<C,M> {
     #[inline] fn div_assign(&mut self, rhs:Self) { *self*=rhs.inv() }
