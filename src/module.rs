@@ -141,6 +141,12 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
         ::std::mem::swap(self, &mut temp);
         IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
     }
+
+    ///Computes the algebraic commutator `[a,b] = a*b - b*a`
+    pub fn commutator(self, rhs:Self) -> Self where Self:MulMagma+Sub<Output=Self> {
+        self.clone()*rhs.clone() - rhs*self
+    }
+
 }
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {

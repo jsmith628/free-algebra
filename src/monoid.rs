@@ -123,6 +123,11 @@ impl<C,M:?Sized> MonoidalString<C,M> {
         ::std::mem::swap(self, &mut temp);
         IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
     }
+
+    ///Computes the multiplicative commutator `[a,b] = a⁻¹b⁻¹ab`
+    pub fn commutator(self, rhs:Self) -> Self where Self:MulMonoid+Inv<Output=Self> {
+        self.clone().inv()*rhs.clone().inv()*self*rhs
+    }
 }
 
 ///
@@ -226,11 +231,6 @@ impl<C,M:MonoidRule<C>+?Sized> One for MonoidalString<C,M> {
 
 impl<C,M:InvMonoidRule<C>+?Sized> Inv for MonoidalString<C,M> {
     type Output = Self; #[inline] fn inv(self) -> Self {self.invert::<M>()}
-}
-
-impl<C:Clone,M:InvMonoidRule<C>+AssociativeMonoidRule<C>+?Sized> MonoidalString<C,M> {
-    ///Computes the multiplicative commutator `[a,b] = a⁻¹b⁻¹ab`
-    pub fn commutator(self, rhs:Self) -> Self { self.clone().inv()*rhs.clone()*self*rhs }
 }
 
 #[marker] #[doc(hidden)] pub trait PowMarker<T> {}
