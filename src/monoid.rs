@@ -124,6 +124,11 @@ impl<C,M:?Sized> MonoidalString<C,M> {
         IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
     }
 
+    ///Reverses the letters in this element and remultiplies
+    pub fn reverse(self) -> Self where Self:Product<C> {
+        self.into_iter().rev().product()
+    }
+
     ///Computes the multiplicative commutator `[a,b] = a⁻¹b⁻¹ab`
     pub fn commutator(self, rhs:Self) -> Self where Self:MulMonoid+Inv<Output=Self> {
         self.clone().inv()*rhs.clone().inv()*self*rhs
