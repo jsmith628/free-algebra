@@ -235,7 +235,13 @@ impl<C,M:MonoidRule<C>+?Sized> One for MonoidalString<C,M> {
 }
 
 impl<C,M:InvMonoidRule<C>+?Sized> Inv for MonoidalString<C,M> {
-    type Output = Self; #[inline] fn inv(self) -> Self {self.invert::<M>()}
+    type Output = Self;
+    #[inline] fn inv(self) -> Self {self.invert::<M>()}
+}
+
+impl<'a,C,M:InvMonoidRule<C>+?Sized> Inv for &'a MonoidalString<C,M> where MonoidalString<C,M>:Clone {
+    type Output = MonoidalString<C,M>;
+    #[inline] fn inv(self) -> Self::Output {(*self).clone().inv()}
 }
 
 #[marker] #[doc(hidden)] pub trait PowMarker<T> {}

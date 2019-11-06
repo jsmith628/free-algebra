@@ -287,6 +287,11 @@ impl<T:Hash+Eq,R:Neg,A:?Sized> Neg for ModuleString<R,T,A> {
     }
 }
 
+impl<'a,T:Hash+Eq,R:Neg,A:?Sized> Neg for &'a ModuleString<R,T,A> where ModuleString<R,T,A>:Clone {
+    type Output = ModuleString<R::Output,T,A>;
+    #[inline] fn neg(self) -> Self::Output {-(*self).clone()}
+}
+
 impl<T:Hash+Eq,R:AddAssign,A:?Sized> Zero for ModuleString<R,T,A> {
     #[inline] fn zero() -> Self {Default::default()}
     #[inline] fn is_zero(&self) -> bool {self.terms.len()==0}
