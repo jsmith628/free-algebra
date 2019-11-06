@@ -16,11 +16,21 @@ impl<C> MonoidRule<C> for () {
 ///
 ///Used for constructing [FreeGroup]
 ///
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum FreeInv<T> {
     ///Wraps an instance of type `T`
     Id(T),
     ///The symbolic inverse of an object of type `T`
     Inv(T)
+}
+
+impl<T:Display> Display for FreeInv<T> {
+    fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
+        match self {
+            Self::Id(x) => write!(f, "{}", x),
+            Self::Inv(x) => write!(f, "{}⁻¹", x),
+        }
+    }
 }
 
 impl<T> FreeInv<T> {
@@ -102,6 +112,12 @@ pub type FreeGroup<C> = MonoidalString<FreeInv<C>,InvRule>;
 #[derive(Derivative)]
 #[derivative(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub struct FreePow<C:Eq,P>(pub C,pub P);
+
+impl<C:Eq+Display,P:Display> Display for FreePow<C,P> {
+    fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
+        write!(f, "{}^{}", self.0, self.1)
+    }
+}
 
 impl<C:Eq,P:One+Neg<Output=P>> From<FreeInv<C>> for FreePow<C,P> {
     fn from(inv: FreeInv<C>) -> Self {

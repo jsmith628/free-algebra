@@ -16,6 +16,19 @@ pub struct MonoidalString<C,M:?Sized> {
     rule: PhantomData<M>
 }
 
+impl<C:Display,M:?Sized> Display for MonoidalString<C,M> {
+    fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
+        //print letters as a product
+        for i in 0..self.len() {
+            if i!=0 { write!(f, "*")? }
+            write!(f, "{}", self[i])?
+        }
+
+        //success
+        Ok(())
+    }
+}
+
 ///Iterates over immutable references of the letters of a [MonoidalString]
 pub type Iter<'a,C> = std::slice::Iter<'a,C>;
 

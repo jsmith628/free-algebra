@@ -17,6 +17,7 @@ use std::marker::PhantomData;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::fmt::{Display, Formatter};
 
 use std::iter::*;
 
@@ -48,9 +49,18 @@ macro_rules! impl_arith {
 
 }
 
-pub(self) trait IsZero { fn _is_zero(&self) -> bool; }
-impl<T> IsZero for T { default fn _is_zero(&self) -> bool { false } }
-impl<T:Zero> IsZero for T { default fn _is_zero(&self) -> bool { self.is_zero() } }
+pub(self) trait IsZero: Sized {
+    fn _is_zero(&self) -> bool;
+    fn _zero() -> Option<Self>;
+}
+impl<T> IsZero for T {
+    default fn _is_zero(&self) -> bool { false }
+    default fn _zero() -> Option<Self> {None}
+}
+impl<T:Zero> IsZero for T {
+    default fn _is_zero(&self) -> bool { self.is_zero() }
+    default fn _zero() -> Option<Self> { Some(Self::zero()) }
+}
 
 pub use self::specifics::*;
 mod specifics;

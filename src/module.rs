@@ -7,6 +7,7 @@ use std::collections::hash_map;
 #[derivative(Clone(clone_from="true"))]
 #[derivative(Default(bound=""))]
 #[derivative(PartialEq, Eq, Hash)]
+#[derivative(Debug="transparent")]
 pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
     #[derivative(Hash(bound="HashMap<T,R>:Hash"))]
     #[derivative(Default(value="HashMap::with_capacity(0)"))]
@@ -15,6 +16,49 @@ pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
     #[derivative(PartialEq="ignore", Hash="ignore")]
     #[derivative(Debug="ignore")]
     rule: PhantomData<Box<A>>
+}
+
+impl<R:Display,T:Hash+Eq+Display,A:?Sized> Display for ModuleString<R,T,A> {
+    fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
+        if self.len() == 0 {
+            //try to print 0 as formatted by R
+            match R::_zero() {
+                Some(zero) => write!(f, "{}", zero)?,
+                None => write!(f, "{}", 0)?,
+            }
+        } else {
+            //put parens around sums
+            if self.len() > 1 { write!(f, "(")?; }
+
+            //use specialization to determine if a T is one
+            trait IsOne<R,T> { fn _is_one(t:&T) -> bool; }
+            impl<R,T,A:?Sized> IsOne<R,T> for A { default fn _is_one(_:&T) -> bool {false} }
+            impl<R,T,A:UnitalAlgebraRule<R,T>+?Sized> IsOne<R,T> for A { fn _is_one(t:&T) -> bool {A::is_one(t)} }
+
+            //print every term in a sum
+            let mut first = true;
+            for (r,t) in self.iter() {
+
+                //add the plus sign to the previous sum
+                if !first {
+                    write!(f, " + ")?;
+                    first = false;
+                }
+
+                //write the coefficient
+                write!(f, "{}", r)?;
+
+                //if the term isn't one, write the term
+                if !<A as IsOne<R,T>>::_is_one(t) { write!(f, "*{}", t)?; }
+            }
+
+            //put parens around sums
+            if self.len() > 1 { write!(f, ")")?; }
+        }
+
+        //success
+        Ok(())
+    }
 }
 
 ///Iterates over references to the terms and coefficients of a [ModuleString]
