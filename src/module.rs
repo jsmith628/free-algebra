@@ -213,10 +213,19 @@ impl<T:Hash+Eq,R:DivAssign+Clone,A:?Sized> DivAssign<R> for ModuleString<R,T,A> 
     }
 }
 
-from_assign!(impl<T,R,A,X> Add<X>.add for ModuleString<R,T,A> with += where T:Hash+Eq, A:?Sized, Self:AddAssign<X>);
-from_assign!(impl<T,R,A,X> Sub<X>.sub for ModuleString<R,T,A> with -= where T:Hash+Eq, A:?Sized, Self:SubAssign<X>);
-from_assign!(impl<T,R,A,X> Mul<X>.mul for ModuleString<R,T,A> with *= where T:Hash+Eq, A:?Sized, Self:MulAssign<X>);
-from_assign!(impl<T,R,A,X> Div<X>.div for ModuleString<R,T,A> with /= where T:Hash+Eq, A:?Sized, Self:DivAssign<X>);
+impl_arith!(impl<T,R,A> AddAssign<&Self>.add_assign for ModuleString<R,T,A> where T:Hash+Eq,A:?Sized);
+impl_arith!(impl<T,R,A> SubAssign<&Self>.sub_assign for ModuleString<R,T,A> where T:Hash+Eq,A:?Sized);
+
+impl_arith!(impl<T,R,A> AddAssign<&T>.add_assign for ModuleString<R,T,A> where T:Hash+Eq,A:?Sized);
+impl_arith!(impl<T,R,A> SubAssign<&T>.sub_assign for ModuleString<R,T,A> where T:Hash+Eq,A:?Sized);
+
+impl_arith!(impl<T,R,A> MulAssign<&R>.mul_assign for ModuleString<R,T,A> where T:Hash+Eq,A:?Sized);
+impl_arith!(impl<T,R,A> DivAssign<&R>.div_assign for ModuleString<R,T,A> where T:Hash+Eq,A:?Sized);
+
+impl_arith!(impl<T,R,A> Add.add with AddAssign.add_assign for ModuleString<R,T,A> where T:Hash+Eq, A:?Sized);
+impl_arith!(impl<T,R,A> Sub.sub with SubAssign.sub_assign for ModuleString<R,T,A> where T:Hash+Eq, A:?Sized);
+impl_arith!(impl<T,R,A> Mul.mul with MulAssign.mul_assign for ModuleString<R,T,A> where T:Hash+Eq, A:?Sized);
+impl_arith!(impl<T,R,A> Div.div with DivAssign.div_assign for ModuleString<R,T,A> where T:Hash+Eq, A:?Sized);
 
 impl<T:Hash+Eq,R:Neg,A:?Sized> Neg for ModuleString<R,T,A> {
     type Output = ModuleString<R::Output,T,A>;

@@ -20,18 +20,33 @@ use std::hash::Hash;
 
 use std::iter::*;
 
-///Implements an operator overload using the assign variant
-macro_rules! from_assign {
+macro_rules! impl_arith {
 
-    (impl<$($T:ident),*> $Trait:ident<$RHS:ident>.$fun:ident for $ty:ident<$($U:ident),*> with $op:tt $($where:tt)*) => {
-        impl<$($T),*> $Trait<$RHS> for $ty<$($U),*> $($where)* {
+    (impl<$($T:ident),*> $Trait:ident.$fun:ident with $TraitAssign:ident.$fun_assign:ident for $ty:ty where $($where:tt)*) => {
+
+        //impl of an op using its assign variant
+        impl<RHS, $($T),*> $Trait<RHS> for $ty where $($where)*, Self:$TraitAssign<RHS> {
             type Output = Self;
-            #[inline] fn $fun(mut self, rhs:$RHS) -> Self {self $op rhs; self}
+            #[inline] fn $fun(mut self, rhs:RHS) -> Self {self.$fun_assign(rhs); self}
         }
+
+        //impl of an op on a reference
+        impl<'a, RHS, $($T),*> $Trait<RHS> for &'a $ty where $($where)*, $ty:Clone+$Trait<RHS> {
+            type Output = <$ty as $Trait<RHS>>::Output;
+            #[inline] fn $fun(self, rhs:RHS) -> Self::Output {(*self).clone().$fun(rhs)}
+        }
+    };
+
+    (impl<$($T:ident),*> $TraitAssign:ident<&$RHS:ident>.$fun_assign:ident for $ty:ty where $($where:tt)*) => {
+
+        //impl of an op with a reference
+        impl<'a, $($T),*> $TraitAssign<&'a $RHS> for $ty where $($where)*, Self:$TraitAssign<$RHS>, $RHS:Clone {
+            #[inline] fn $fun_assign(&mut self, rhs:&'a $RHS) {self.$fun_assign((*rhs).clone())}
+        }
+
     }
 
 }
-
 
 pub(self) trait IsZero { fn _is_zero(&self) -> bool; }
 impl<T> IsZero for T { default fn _is_zero(&self) -> bool { false } }

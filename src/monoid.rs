@@ -197,6 +197,15 @@ impl<C,M:InvMonoidRule<C>+?Sized> DivAssign for MonoidalString<C,M> {
     #[inline] fn div_assign(&mut self, rhs:Self) { *self*=rhs.inv() }
 }
 
+impl_arith!(impl<C,M> MulAssign<&C>.mul_assign for MonoidalString<C,M> where M:?Sized);
+impl_arith!(impl<C,M> DivAssign<&C>.div_assign for MonoidalString<C,M> where M:?Sized);
+
+impl_arith!(impl<C,M> MulAssign<&Self>.mul_assign for MonoidalString<C,M> where M:?Sized);
+impl_arith!(impl<C,M> DivAssign<&Self>.div_assign for MonoidalString<C,M> where M:?Sized);
+
+impl_arith!(impl<C,M> Mul.mul with MulAssign.mul_assign for MonoidalString<C,M> where M:?Sized);
+impl_arith!(impl<C,M> Div.div with DivAssign.div_assign for MonoidalString<C,M> where M:?Sized);
+
 impl<C,M:MonoidRule<C>+?Sized> One for MonoidalString<C,M> {
     #[inline] fn one() -> Self { Default::default() }
     #[inline] fn is_one(&self) -> bool { self.string.len()==0 }
@@ -210,9 +219,6 @@ impl<C:Clone,M:InvMonoidRule<C>+AssociativeMonoidRule<C>+?Sized> MonoidalString<
     ///Computes the multiplicative commutator `[a,b] = a⁻¹b⁻¹ab`
     pub fn commutator(self, rhs:Self) -> Self { self.clone().inv()*rhs.clone()*self*rhs }
 }
-
-from_assign!(impl<C,M,X> Mul<X>.mul for MonoidalString<C,M> with *= where M:?Sized, Self:MulAssign<X>);
-from_assign!(impl<C,M,X> Div<X>.div for MonoidalString<C,M> with /= where M:?Sized, Self:DivAssign<X>);
 
 #[marker] #[doc(hidden)] pub trait PowMarker<T> {}
 impl<Z:IntegerSubset,C,M:InvMonoidRule<C>+?Sized> PowMarker<Z> for MonoidalString<C,M> {}
