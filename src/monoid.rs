@@ -5,7 +5,7 @@ use std::ops::Index;
 #[derive(Derivative)]
 #[derivative(Clone(clone_from="true"))]
 #[derivative(Default(bound=""))]
-#[derivative(PartialEq, Eq, Hash)]
+#[derivative(Hash)]
 #[derivative(Debug="transparent")]
 pub struct MonoidalString<C,M:?Sized> {
     #[derivative(Default(value="Vec::with_capacity(0)"))]
@@ -14,6 +14,13 @@ pub struct MonoidalString<C,M:?Sized> {
     #[derivative(PartialEq="ignore", Hash="ignore")]
     #[derivative(Debug="ignore")]
     rule: PhantomData<M>
+}
+
+impl<C:Eq,M:?Sized> Eq for MonoidalString<C,M> {}
+impl<C:PartialEq,M:?Sized,V:Borrow<[C]>> PartialEq<V> for MonoidalString<C,M> {
+    fn eq(&self, rhs:&V) -> bool {Borrow::<[C]>::borrow(self) == Borrow::<[C]>::borrow(rhs)}
+
+    fn ne(&self, rhs:&V) -> bool {Borrow::<[C]>::borrow(self) != Borrow::<[C]>::borrow(rhs)}
 }
 
 impl<C:Display,M:?Sized> Display for MonoidalString<C,M> {
