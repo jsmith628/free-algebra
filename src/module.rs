@@ -77,11 +77,6 @@ impl<T:Hash+Eq,R,A:?Sized,I> Index<I> for ModuleString<R,T,A> where HashMap<T,R>
     #[inline] fn index(&self, i:I) -> &Self::Output {&self.terms[i]}
 }
 
-impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
-    ///Returns the number of terms in this module element
-    pub fn num_terms(&self) -> usize {self.terms.len()}
-}
-
 impl<T:Hash+Eq,R,A:?Sized> IntoIterator for ModuleString<R,T,A> {
     type Item = (R,T);
     type IntoIter = IntoIter<R,T>;
@@ -89,12 +84,16 @@ impl<T:Hash+Eq,R,A:?Sized> IntoIterator for ModuleString<R,T,A> {
 }
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
+
+    ///Returns the number of terms in this module element
+    pub fn len(&self) -> usize {self.terms.len()}
+
     ///Produces an iterator over references to the terms and references in this element
     pub fn iter<'a>(&'a self) -> Iter<'a,R,T> { self.terms.iter().map(|(t,r)| (r,t)) }
 
     ///Produces an iterator over mutable references to the terms and references in this element
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a,R,T,A> where R:AddAssign {
-        let mut temp = Self { terms: HashMap::with_capacity(self.num_terms()), rule:PhantomData };
+        let mut temp = Self { terms: HashMap::with_capacity(self.len()), rule:PhantomData };
         ::std::mem::swap(self, &mut temp);
         IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
     }
