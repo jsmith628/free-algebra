@@ -19,20 +19,23 @@ pub struct MonoidalString<C,M:?Sized> {
 impl<C:Eq,M:?Sized> Eq for MonoidalString<C,M> {}
 impl<C:PartialEq,M:?Sized,V:Borrow<[C]>> PartialEq<V> for MonoidalString<C,M> {
     fn eq(&self, rhs:&V) -> bool {Borrow::<[C]>::borrow(self) == Borrow::<[C]>::borrow(rhs)}
-
     fn ne(&self, rhs:&V) -> bool {Borrow::<[C]>::borrow(self) != Borrow::<[C]>::borrow(rhs)}
 }
 
 impl<C:Display,M:?Sized> Display for MonoidalString<C,M> {
     fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
-        //print letters as a product
-        for i in 0..self.len() {
-            if i!=0 { write!(f, "*")? }
-            write!(f, "{}", self[i])?
-        }
+        if self.len()==0 {
+            write!(f, "{}", 1)
+        } else {
+            //print letters as a product
+            for i in 0..self.len() {
+                if i!=0 { write!(f, "*")? }
+                write!(f, "{}", self[i])?
+            }
 
-        //success
-        Ok(())
+            //success
+            Ok(())
+        }
     }
 }
 
