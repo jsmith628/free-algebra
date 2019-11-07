@@ -6,6 +6,7 @@ use super::*;
 ///In essence, this entails constructing a [FreeMonoid] over [FreeInv<C>](FreeInv) with the same
 ///multiplication _except_ that elements cancel with their inverses
 ///
+///# Examples
 ///```
 ///use maths_traits::algebra::{One, Inv};
 ///use free_algebra::FreeGroup;

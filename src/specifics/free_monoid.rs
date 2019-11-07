@@ -7,6 +7,7 @@ use super::*;
 ///of members of `C` where multiplication is given by concatenation. In other words, it's basically
 ///[`Vec<C>`](Vec) but with `a*b == {a.append(&mut b); a}`.
 ///
+///# Examples
 ///```
 ///use maths_traits::algebra::One;
 ///use free_algebra::FreeMonoid;
