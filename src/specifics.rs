@@ -128,9 +128,9 @@ impl<T:Eq> Div<FreeGroup<T>> for FreeInv<T> {
 ///[`Vec<C>`](Vec) but with `a*b == {a.append(&mut b); a}`.
 ///
 ///```
-///# use maths_traits::algebra::*;
-///# use free_algebra::FreeMonoid;
-///#
+///use maths_traits::algebra::One;
+///use free_algebra::FreeMonoid;
+///
 ///let s1 = FreeMonoid::one() * 'a' * 'b' * 'c';
 ///let s2 = s1.clone().reverse();
 ///
@@ -152,9 +152,9 @@ pub type FreeMonoid<C> = MonoidalString<C,()>;
 ///multiplication _except_ that elements cancel with their inverses
 ///
 ///```
-///# use maths_traits::algebra::*;
-///# use free_algebra::FreeGroup;
-///#
+///use maths_traits::algebra::{One, Inv};
+///use free_algebra::FreeGroup;
+///
 ///use free_algebra::FreeInv::*;
 ///
 ///let g1 = Id('a') * Id('b').inv() * Id('c');

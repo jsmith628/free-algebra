@@ -22,6 +22,47 @@ impl<C:PartialEq,M:?Sized,V:Borrow<[C]>> PartialEq<V> for MonoidalString<C,M> {
     fn ne(&self, rhs:&V) -> bool {Borrow::<[C]>::borrow(self) != Borrow::<[C]>::borrow(rhs)}
 }
 
+///
+///Formats the [MonoidalString] as a sequence of factors separated by `*`'s
+///
+///## Examples
+///
+///```
+///use maths_traits::algebra::One;
+///use free_algebra::FreeMonoid;
+///
+///let x = FreeMonoid::one() * 'a' * 'b' * 'c';
+///assert_eq!(format!("{}", x), "a*b*c");
+///
+///```
+///
+///```
+///use maths_traits::algebra::*;
+///use free_algebra::FreeInv::*;
+///
+///let y = Id('a') * Inv('b') * Inv('a') * Id('c');
+///assert_eq!(format!("{}", y), "a*b⁻¹*a⁻¹*c");
+///```
+///
+///Note that if the "alternate" flag `#` is used, then the `*`'s will be dropped.
+///
+///```
+///use maths_traits::algebra::One;
+///use free_algebra::FreeMonoid;
+///
+///let x = FreeMonoid::one() * 'a' * 'b' * 'c';
+///assert_eq!(format!("{:#}", x), "abc");
+///
+///```
+///
+///```
+///use maths_traits::algebra::*;
+///use free_algebra::FreeInv::*;
+///
+///let y = Id('a') * Inv('b') * Inv('a') * Id('c');
+///assert_eq!(format!("{:#}", y), "ab⁻¹a⁻¹c");
+///```
+///
 impl<C:Display,M:?Sized> Display for MonoidalString<C,M> {
     fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
         if self.len()==0 {
@@ -29,7 +70,7 @@ impl<C:Display,M:?Sized> Display for MonoidalString<C,M> {
         } else {
             //print letters as a product
             for i in 0..self.len() {
-                if i!=0 { write!(f, "*")? }
+                if i!=0 && !f.alternate() { write!(f, "*")? }
                 write!(f, "{}", self[i])?
             }
 
@@ -121,25 +162,115 @@ impl<C,M:MonoidRule<C>+?Sized> Product for MonoidalString<C,M> {
 }
 
 impl<C,M:?Sized> MonoidalString<C,M> {
+
+    ///
     ///Returns the number of letters in this monoidal-string
+    ///
+    ///## Examples
+    ///```
+    ///use maths_traits::algebra::One;
+    ///use free_algebra::FreeMonoid;
+    ///
+    ///let x = FreeMonoid::one();
+    ///let y = x.clone() * 'a' * 'a';
+    ///
+    ///assert_eq!(x.len(), 0);
+    ///assert_eq!(y.len(), 2);
+    ///
+    ///```
+    ///
     #[inline] pub fn len(&self) -> usize { self.string.len() }
 
+    ///
     ///Produces an iterator over references to the letters in this element
+    ///
+    ///## Examples
+    ///```
+    ///use maths_traits::algebra::One;
+    ///use free_algebra::FreeMonoid;
+    ///
+    ///let x = FreeMonoid::one() * 'a' * 'b' * 'c';
+    ///let mut iter = x.iter();
+    ///
+    ///assert_eq!(iter.next(), Some(&'a'));
+    ///assert_eq!(iter.next(), Some(&'b'));
+    ///assert_eq!(iter.next(), Some(&'c'));
+    ///assert_eq!(iter.next(), None);
+    ///
+    ///```
+    ///
     #[inline] pub fn iter(&self) -> Iter<C> { self.string.iter() }
 
+    ///
     ///Produces an iterator over mutable references to the letters in this element
+    ///
+    ///Note that the potential for modification does mean that the element needs to be remultiplied
+    ///as letters are changed, so a potential reallocation of space may occur.
+    ///
+    ///## Examples
+    ///```
+    ///use free_algebra::{FreePow, FreePowMonoid};
+    ///
+    ///let x = FreePow('a',1) * FreePow('b',1) * FreePow('c',1);
+    ///let mut y = x.clone();
+    ///
+    ///for FreePow(c,p) in y.iter_mut() {
+    ///    *c = 'a';
+    ///}
+    ///
+    ///assert_eq!(x, [FreePow('a',1), FreePow('b',1), FreePow('c',1)]);
+    ///assert_eq!(y, [FreePow('a',3)]);
+    ///
+    ///```
+    ///
     #[inline] pub fn iter_mut(&mut self) -> IterMut<C,M> where M:MonoidRule<C> {
         let mut temp = Self { string: Vec::with_capacity(self.len()), rule:PhantomData };
         ::std::mem::swap(self, &mut temp);
         IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
     }
 
+    ///
     ///Reverses the letters in this element and remultiplies
+    ///
+    ///## Examples
+    ///```
+    ///use maths_traits::algebra::One;
+    ///use free_algebra::FreeMonoid;
+    ///
+    ///let x = FreeMonoid::one() * 'a' * 'b' * 'c';
+    ///let y = x.clone().reverse();
+    ///
+    ///assert_eq!(x, ['a', 'b', 'c']);
+    ///assert_eq!(y, ['c', 'b', 'a']);
+    ///
+    ///```
     pub fn reverse(self) -> Self where Self:Product<C> {
         self.into_iter().rev().product()
     }
 
+    ///
     ///Computes the multiplicative commutator `[a,b] = a⁻¹b⁻¹ab`
+    ///
+    ///## Examples
+    ///```
+    ///use free_algebra::FreeGroup;
+    ///use free_algebra::FreeInv::*;
+    ///
+    ///let x:FreeGroup<_> = Id('a').into();
+    ///let y:FreeGroup<_> = Id('b').into();
+    ///
+    ///assert_eq!(x, [Id('a')]);
+    ///assert_eq!(y, [Id('b')]);
+    ///assert_eq!(x.commutator(y), [Inv('a'), Inv('b'), Id('a'), Id('b')]);
+    ///
+    ///```
+    ///
+    ///Note that a significant property of this product is that when the arguments commute, the
+    ///output is always `1`.
+    ///
+    ///```
+    ///```
+    ///
     pub fn commutator(self, rhs:Self) -> Self where Self:MulMonoid+Inv<Output=Self> {
         self.clone().inv()*rhs.clone().inv()*self*rhs
     }
