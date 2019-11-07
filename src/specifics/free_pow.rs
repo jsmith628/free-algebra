@@ -1,6 +1,26 @@
 use super::*;
 
-///A [FreeModule] or [FreeGroup], but where repeated letters are grouped together using exponents
+///
+///The free multiplication of members of type `C` raised to some power
+///
+///The primary use-case of this is to compress the storage requirements of a [FreeGroup] or [FreeMonoid]
+///by grouping repeated elements with an [integral](IntegerSubset) exponent, but other, more exotic,
+///exponents are supported as well
+///
+///# Examples
+///```
+///use free_algebra::{FreePowMonoid, FreePow};
+///
+///let x = FreePow('a', 1) * FreePow('a', 2) * FreePow('b', 1) * FreePow('a', 2);
+///let y = FreePow('a', -2) * FreePow('b', 1);
+///
+///assert_eq!(x, [FreePow('a', 3), FreePow('b', 1), FreePow('a', 2)]);
+///assert_eq!(y, [FreePow('a', -2), FreePow('b', 1)]);
+///assert_eq!(x*y, [FreePow('a', 3), FreePow('b', 2)]);
+///
+///```
+///
+///
 pub type FreePowMonoid<C,P> = MonoidalString<FreePow<C,P>,PowRule>;
 
 ///
@@ -46,7 +66,7 @@ impl<C:Eq,P:Add<Output=P>> MonoidRule<FreePow<C,P>> for PowRule {
     }
 }
 
-impl<C:Eq,P:Add<Output=P>+Neg<Output=P>> InvMonoidRule<FreePow<C,P>> for PowRule {
+impl<C:Eq,P:Add<Output=P>+Neg<Output=P>+Zero> InvMonoidRule<FreePow<C,P>> for PowRule {
     fn invert(free: FreePow<C,P>) -> FreePow<C,P> { free.inv() }
 }
 
@@ -56,6 +76,11 @@ impl<C:Eq,P> From<(C,P)> for FreePow<C,P> { fn from((c,z):(C,P)) -> Self { FreeP
 impl<C:Eq,P:Neg<Output=P>> Inv for FreePow<C,P> {
     type Output = Self;
     fn inv(self) -> Self { FreePow(self.0, -self.1) }
+}
+
+impl<C:Eq,P:Mul<Output=P>> Pow<P> for FreePow<C,P> {
+    type Output = FreePow<C,P>;
+    fn pow(self, rhs:P) -> FreePow<C,P> { FreePow(self.0, self.1 * rhs) }
 }
 
 impl<C:Eq,P:Add<Output=P>> Mul for FreePow<C,P> {
@@ -73,17 +98,17 @@ impl<C:Eq,P:Add<Output=P>> Mul<FreePowMonoid<C,P>> for FreePow<C,P> {
     fn mul(self, rhs:FreePowMonoid<C,P>) -> FreePowMonoid<C,P> { FreePowMonoid::from(self) * rhs }
 }
 
-impl<C:Eq,P:Add<Output=P>+Neg<Output=P>> Div for FreePow<C,P> {
+impl<C:Eq,P:Add<Output=P>+Neg<Output=P>+Zero> Div for FreePow<C,P> {
     type Output = FreePowMonoid<C,P>;
     fn div(self, rhs:Self) -> FreePowMonoid<C,P> { self * rhs.inv() }
 }
 
-impl<C:Eq,P:Add<Output=P>+One+Neg<Output=P>> Div<C> for FreePow<C,P> {
+impl<C:Eq,P:Add<Output=P>+One+Neg<Output=P>+Zero> Div<C> for FreePow<C,P> {
     type Output = FreePowMonoid<C,P>;
     fn div(self, rhs:C) -> FreePowMonoid<C,P> { self / Self::from(rhs) }
 }
 
-impl<C:Eq,P:Add<Output=P>+Neg<Output=P>> Div<FreePowMonoid<C,P>> for FreePow<C,P> {
+impl<C:Eq,P:Add<Output=P>+Neg<Output=P>+Zero> Div<FreePowMonoid<C,P>> for FreePow<C,P> {
     type Output = FreePowMonoid<C,P>;
     fn div(self, rhs:FreePowMonoid<C,P>) -> FreePowMonoid<C,P> { FreePowMonoid::from(self) / rhs }
 }
