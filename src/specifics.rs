@@ -24,6 +24,19 @@ pub enum FreeInv<T:Eq> {
     Inv(T)
 }
 
+impl<T:Eq> From<T> for FreeInv<T> {
+    fn from(t:T) -> Self { FreeInv::Id(t) }
+}
+
+impl<T:Eq> PartialEq<T> for FreeInv<T> {
+    fn eq(&self, rhs:&T) -> bool {
+        match self {
+            FreeInv::Id(x) => x==rhs,
+            FreeInv::Inv(_) => false
+        }
+    }
+}
+
 impl<T:Eq+Display> Display for FreeInv<T> {
     fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
         match self {
@@ -61,6 +74,7 @@ impl<T:Eq> FreeInv<T> {
 ///Multiplication of [FreeInv] elements using concatenation with inverse cancellation
 pub struct InvRule;
 
+impl<T:Eq> AssociativeMonoidRule<FreeInv<T>> for InvRule {}
 impl<T:Eq> MonoidRule<FreeInv<T>> for InvRule {
     fn apply(mut string: Vec<FreeInv<T>>, letter: FreeInv<T>) -> Vec<FreeInv<T>> {
         if string.last().map_or(false, |last| letter.are_inverses(last)) {
