@@ -133,6 +133,16 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
     ///Returns the number of terms in this module element
     pub fn len(&self) -> usize {self.terms.len()}
 
+    ///Retrieves a reference to the coefficient of a term, if it is non-zero
+    pub fn get_ref<Q:Hash+Eq>(&self, t: &Q) -> Option<&R> where T:Borrow<Q> {
+        self.terms.get(t)
+    }
+
+    ///Clones a the coefficient of a term or returns [zero](Zero::zero()) if it doesn't exist
+    pub fn get<Q:Hash+Eq>(&self, t: &Q) -> R where T:Borrow<Q>, R:Zero+Clone {
+        self.terms.get(t).map_or_else(|| R::zero(), |r| r.clone())
+    }
+
     ///Produces an iterator over references to the terms and references in this element
     pub fn iter<'a>(&'a self) -> Iter<'a,R,T> { self.terms.iter().map(|(t,r)| (r,t)) }
 
