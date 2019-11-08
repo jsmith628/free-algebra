@@ -1,6 +1,7 @@
 use super::*;
 
 use std::ops::Index;
+use std::cmp::*;
 
 #[derive(Derivative)]
 #[derivative(Clone(clone_from="true"))]
@@ -20,6 +21,18 @@ impl<C:Eq,M:?Sized> Eq for MonoidalString<C,M> {}
 impl<C:PartialEq,M:?Sized,V:Borrow<[C]>> PartialEq<V> for MonoidalString<C,M> {
     fn eq(&self, rhs:&V) -> bool {Borrow::<[C]>::borrow(self) == Borrow::<[C]>::borrow(rhs)}
     fn ne(&self, rhs:&V) -> bool {Borrow::<[C]>::borrow(self) != Borrow::<[C]>::borrow(rhs)}
+}
+
+impl<C:PartialOrd,M:?Sized> PartialOrd for MonoidalString<C,M> {
+    fn partial_cmp(&self, rhs:&Self) -> Option<Ordering> { self.string.partial_cmp(&rhs.string) }
+    fn lt(&self, rhs:&Self) -> bool { self.string.lt(&rhs.string) }
+    fn le(&self, rhs:&Self) -> bool { self.string.le(&rhs.string) }
+    fn gt(&self, rhs:&Self) -> bool { self.string.gt(&rhs.string) }
+    fn ge(&self, rhs:&Self) -> bool { self.string.ge(&rhs.string) }
+}
+
+impl<C:Ord,M:?Sized> Ord for MonoidalString<C,M> {
+    fn cmp(&self, rhs:&Self) -> Ordering { self.string.cmp(&rhs.string) }
 }
 
 ///
