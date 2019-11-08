@@ -42,6 +42,7 @@ impl<R:Display,T:Hash+Eq+Display,A:?Sized> Display for ModuleString<R,T,A> {
                 //add the plus sign to the previous sum
                 if !first {
                     write!(f, " + ")?;
+                } else {
                     first = false;
                 }
 
@@ -151,28 +152,31 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
 
-    fn insert_term<F:Fn(&mut R, R)>(&mut self, rhs:(R,T), f:F) {
+    fn insert_term<F:Fn(R)->R>(&mut self, rhs:(R,T), f:F) where R:AddAssign{
         if !rhs.0._is_zero() {
-            let (r, t) = rhs;
+            let (r, t) = (f(rhs.0), rhs.1);
             if let Some(r2) = self.terms.get_mut(&t) {
-                f(r2,r);
-                if r2._is_zero() { self.terms.remove(&t); }
-            } else {
+                *r2 += r;
+
+                //Note, we must be VERY careful here because simply doing r2._is_zero() will run
+                //_is_zero() on the REFERENCE to the coefficient, not the coeffient itself
+                if (*r2)._is_zero() { self.terms.remove(&t); }
+            } else if !r._is_zero() {
                 self.terms.insert(t, r);
             }
         }
     }
 
-    fn insert<I:IntoIterator<Item=(R,T)>, F:Fn(&mut R, R)+Copy>(&mut self, rhs:I, f:F) {
+    fn insert<I:IntoIterator<Item=(R,T)>, F:Fn(R)->R+Copy>(&mut self, rhs:I, f:F) where R:AddAssign {
         rhs.into_iter().for_each(|term| self.insert_term(term, f));
     }
 
     ///removes all terms with a coeffient of zero
-    fn clean(&mut self) { self.terms.retain(|r,_| !r._is_zero()); }
+    fn clean(&mut self) { self.terms.retain(|_,r| !r._is_zero()); }
 }
 
 impl<T:Hash+Eq,R:AddAssign,A:?Sized> Extend<(R,T)> for ModuleString<R,T,A> {
-    fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) { self.insert(iter, |a,b| *a+=b) }
+    fn extend<I:IntoIterator<Item=(R,T)>>(&mut self, iter:I) { self.insert(iter, |r| r) }
 }
 
 impl<T:Hash+Eq,R:AddAssign,A:?Sized> FromIterator<(R,T)> for ModuleString<R,T,A> {
@@ -230,23 +234,23 @@ impl<T:Hash+Eq,R:MulCommutative,A:?Sized+CommutativeMonoidRule<R,T>> MulCommutat
 impl<T:Hash+Eq,R:Distributive,A:?Sized> Distributive for ModuleString<R,T,A> {}
 
 impl<T:Hash+Eq,R:AddAssign,A:?Sized> AddAssign for ModuleString<R,T,A> {
-    fn add_assign(&mut self, rhs:Self) {self.insert(rhs, |r1, r2| *r1+=r2)}
+    fn add_assign(&mut self, rhs:Self) {self.insert(rhs, |r| r)}
 }
-impl<T:Hash+Eq,R:SubAssign,A:?Sized> SubAssign for ModuleString<R,T,A> {
-    fn sub_assign(&mut self, rhs:Self) {self.insert(rhs, |r1, r2| *r1-=r2)}
+impl<T:Hash+Eq,R:AddAssign+Neg<Output=R>,A:?Sized> SubAssign for ModuleString<R,T,A> {
+    fn sub_assign(&mut self, rhs:Self) {self.insert(rhs, |r| -r)}
 }
 
 impl<T:Hash+Eq,R:AddAssign,A:?Sized> AddAssign<(R,T)> for ModuleString<R,T,A> {
-    fn add_assign(&mut self, rhs:(R,T)) {self.insert_term(rhs, |r1, r2| *r1+=r2)}
+    fn add_assign(&mut self, rhs:(R,T)) {self.insert_term(rhs, |r| r)}
 }
-impl<T:Hash+Eq,R:SubAssign,A:?Sized> SubAssign<(R,T)> for ModuleString<R,T,A> {
-    fn sub_assign(&mut self, rhs:(R,T)) {self.insert_term(rhs, |r1, r2| *r1-=r2)}
+impl<T:Hash+Eq,R:AddAssign+Neg<Output=R>,A:?Sized> SubAssign<(R,T)> for ModuleString<R,T,A> {
+    fn sub_assign(&mut self, rhs:(R,T)) {self.insert_term(rhs, |r| -r)}
 }
 
 impl<T:Hash+Eq,R:AddAssign+One,A:?Sized> AddAssign<T> for ModuleString<R,T,A> {
     fn add_assign(&mut self, rhs:T) {*self+=(R::one(),rhs)}
 }
-impl<T:Hash+Eq,R:SubAssign+One,A:?Sized> SubAssign<T> for ModuleString<R,T,A> {
+impl<T:Hash+Eq,R:AddAssign+Neg<Output=R>+One,A:?Sized> SubAssign<T> for ModuleString<R,T,A> {
     fn sub_assign(&mut self, rhs:T) {*self-=(R::one(),rhs)}
 }
 
@@ -310,19 +314,19 @@ impl<T:Clone+Hash+Eq,R:PartialEq+UnitalSemiring,A:UnitalAlgebraRule<R,T>+?Sized>
 }
 
 
-impl<T:Hash+Eq+Clone,R:MulMagma,A:?Sized+AlgebraRule<R,T>> MulAssign<(R,T)> for ModuleString<R,T,A> {
+impl<T:Hash+Eq+Clone,R:MulMagma+AddMagma,A:?Sized+AlgebraRule<R,T>> MulAssign<(R,T)> for ModuleString<R,T,A> {
     fn mul_assign(&mut self, (r1,t1): (R,T)) {
         let mut temp = HashMap::with_capacity(0);
         ::std::mem::swap(&mut self.terms, &mut temp);
-        self.terms = temp.into_iter().map(
+        *self = temp.into_iter().map(
             |(t, r)| {
                 let (coeff, t2) = A::apply(t, t1.clone());
                 match coeff {
-                    Some(r2) => (t2, (r*r1.clone())*r2),
-                    None => (t2, r*r1.clone()),
+                    Some(r2) => ((r*r1.clone())*r2, t2),
+                    None => (r*r1.clone(), t2),
                 }
             }
-        ).filter(|(_,r)| r._is_zero()).collect();
+        ).sum();
     }
 }
 
