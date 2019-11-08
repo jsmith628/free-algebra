@@ -18,6 +18,36 @@ pub struct ModuleString<R,T:Hash+Eq,A:?Sized> {
     rule: PhantomData<Box<A>>
 }
 
+///
+///Formats the [ModuleString] as a sequence of factors separated by `+`'s
+///
+///# Examples
+///```
+///use maths_traits::algebra::{One, Zero};
+///use free_algebra::{FreeAlgebra, FreeMonoid};
+///
+///let one = FreeMonoid::one();
+///let x:FreeMonoid<_> = 'x'.into();
+///let y:FreeMonoid<_> = 'y'.into();
+///
+///let mut p = FreeAlgebra::zero();
+///assert_eq!(format!("{}", p), "0");
+///
+///p += (1.0, one.clone());
+///assert_eq!(format!("{}", p), "1");
+///
+///p += (2.5, one);
+///assert_eq!(format!("{}", p), "3.5");
+///
+///p += x;
+///assert!(format!("{}", p) == "(3.5 + x)" || format!("{}", p) == "(x + 3.5)");
+///
+///p *= (1.0, y);
+///assert!(format!("{}", p) == "(3.5*y + x*y)" || format!("{}", p) == "(x*y + 3.5*y)");
+///assert!(format!("{:#}", p) == "(3.5y + xy)" || format!("{:#}", p) == "(xy + 3.5y)");
+///
+///```
+///
 impl<R:Display,T:Hash+Eq+Display,A:?Sized> Display for ModuleString<R,T,A> {
     fn fmt(&self, f: &mut Formatter) -> ::std::fmt::Result {
         if self.len() == 0 {
@@ -31,9 +61,14 @@ impl<R:Display,T:Hash+Eq+Display,A:?Sized> Display for ModuleString<R,T,A> {
             if self.len() > 1 { write!(f, "(")?; }
 
             //use specialization to determine if a T is one
-            trait IsOne<R,T> { fn _is_one(t:&T) -> bool; }
-            impl<R,T,A:?Sized> IsOne<R,T> for A { default fn _is_one(_:&T) -> bool {false} }
-            impl<R,T,A:UnitalAlgebraRule<R,T>+?Sized> IsOne<R,T> for A { fn _is_one(t:&T) -> bool {A::is_one(t)} }
+            trait IsTOne<R,T> { fn _is_t_one(t:&T) -> bool; }
+            impl<R,T,A:?Sized> IsTOne<R,T> for A { default fn _is_t_one(_:&T) -> bool {false} }
+            impl<R,T,A:UnitalAlgebraRule<R,T>+?Sized> IsTOne<R,T> for A { fn _is_t_one(t:&T) -> bool {A::is_one(t)} }
+
+            //use specialization to determine if a R is one
+            trait IsOne { fn _is_one(&self) -> bool; }
+            impl<R> IsOne for R { default fn _is_one(&self) -> bool {false} }
+            impl<R:One+PartialEq> IsOne for R { fn _is_one(&self) -> bool { self.is_one() } }
 
             //print every term in a sum
             let mut first = true;
@@ -46,11 +81,25 @@ impl<R:Display,T:Hash+Eq+Display,A:?Sized> Display for ModuleString<R,T,A> {
                     first = false;
                 }
 
-                //write the coefficient
-                write!(f, "{}", r)?;
-
                 //if the term isn't one, write the term
-                if !<A as IsOne<R,T>>::_is_one(t) { write!(f, "*{}", t)?; }
+                if !<A as IsTOne<R,T>>::_is_t_one(t) {
+                    //if the coeffient is one, don't write it
+                    if (*r)._is_one() {
+                        if f.alternate() {
+                            write!(f, "{:#}", t)?;
+                        } else {
+                            write!(f, "{}", t)?;
+                        }
+                    } else {
+                        if f.alternate() {
+                            write!(f, "{:#}{:#}", r, t)?;
+                        } else {
+                            write!(f, "{}*{}", r, t)?;
+                        }
+                    }
+                } else {
+                    write!(f, "{}", r)?;
+                }
             }
 
             //put parens around sums
