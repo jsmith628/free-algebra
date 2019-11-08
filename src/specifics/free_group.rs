@@ -46,6 +46,34 @@ impl<T:Eq> From<T> for FreeInv<T> {
     fn from(t:T) -> Self { FreeInv::Id(t) }
 }
 
+///
+///Provides a reference to this type's inner `T`
+///
+///Note that this does not convey any information regarding the state of inversion
+///
+impl<T:Eq> AsRef<T> for FreeInv<T> {
+    fn as_ref(&self) -> &T {
+        match self {
+            FreeInv::Id(ref x) => x,
+            FreeInv::Inv(ref x) => x
+        }
+    }
+}
+
+///
+///Provides a mutable reference to this type's inner `T`
+///
+///Note that this does not convey any information regarding the state of inversion
+///
+impl<T:Eq> AsMut<T> for FreeInv<T> {
+    fn as_mut(&mut self) -> &mut T {
+        match self {
+            FreeInv::Id(ref mut x) => x,
+            FreeInv::Inv(ref mut x) => x
+        }
+    }
+}
+
 impl<T:Eq> PartialEq<T> for FreeInv<T> {
     fn eq(&self, rhs:&T) -> bool {
         match self {
@@ -66,26 +94,37 @@ impl<T:Eq+Display> Display for FreeInv<T> {
 
 impl<T:Eq> FreeInv<T> {
 
+    ///
+    ///Returns true if `self` is [inverted](FreeInv::Inv)
+    ///
+    ///```
+    ///use free_algebra::FreeInv::*;
+    ///
+    ///assert!(Inv('a').is_inv());
+    ///assert!(!Id('a').is_inv());
+    ///```
+    ///
     pub fn is_inv(&self) -> bool {
         match self { Self::Inv(_) => true, _ => false }
     }
 
+    ///
+    ///Returns true if `self` is [non-inverted](FreeInv::Inv)
+    ///
+    ///```
+    ///use free_algebra::FreeInv::*;
+    ///
+    ///assert!(Id('a').is_id());
+    ///assert!(!Inv('a').is_id());
+    ///```
+    ///
     pub fn is_id(&self) -> bool {
         match self { Self::Id(_) => true, _ => false }
     }
 
-    pub fn are_inverses(&self, rhs:&Self) -> bool {
-        use FreeInv::*;
-        match self {
-            Id(x) => match rhs {
-                Id(_) => false,
-                Inv(y) => x==y
-            },
-            Inv(x) => match rhs {
-                Id(y) => x==y,
-                Inv(_) => false
-            }
-        }
+    ///Determines if two objects are inverses
+    fn are_inverses(&self, rhs:&Self) -> bool {
+        self.as_ref()==rhs.as_ref() && self.is_inv()^rhs.is_inv()
     }
 }
 
