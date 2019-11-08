@@ -25,7 +25,7 @@ impl<C:PartialEq,M:?Sized,V:Borrow<[C]>> PartialEq<V> for MonoidalString<C,M> {
 ///
 ///Formats the [MonoidalString] as a sequence of factors separated by `*`'s
 ///
-///## Examples
+///# Examples
 ///
 ///```
 ///use maths_traits::algebra::One;

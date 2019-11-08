@@ -13,15 +13,16 @@ use super::*;
 ///
 ///use free_algebra::FreeInv::*;
 ///
-///let g1 = Id('a') * Id('b').inv() * Id('c');
-///let g2 = (&g1).inv();
+///let x = Id('a') * Id('b').inv() * Id('c');
+///let y = (&x).inv();
 ///
-///assert_eq!(g1, [Id('a'), Inv('b'), Id('c')]);
-///assert_eq!(g2, [Inv('c'), Id('b'), Inv('a')]);
-///assert!((&g1 * &g2).is_one());
-///assert!((&g2 * &g1).is_one());
+///assert_eq!(x, [Id('a'), Inv('b'), Id('c')]);
+///assert_eq!(y, [Inv('c'), Id('b'), Inv('a')]);
+///assert!((&x / &x).is_one());
+///assert!((&y * &x).is_one());
+///assert!((&x * &y).is_one());
 ///
-///let mul = g1 * Id('d') * g2;
+///let mul = &x * Id('d') * (&y);
 ///assert_eq!(mul, [Id('a'), Inv('b'), Id('c'), Id('d'), Inv('c'), Id('b'), Inv('a')]);
 ///
 ///```
