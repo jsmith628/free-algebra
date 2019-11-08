@@ -14,6 +14,7 @@ pub struct AddRule;
 pub struct MulRule;
 
 impl<R,T:Add<Output=T>+AddAssociative> AssociativeAlgebraRule<R,T> for AddRule {}
+impl<R,T:Add<Output=T>+AddCommutative> CommutativeAlgebraRule<R,T> for AddRule {}
 impl<R,T:Add<Output=T>> AlgebraRule<R,T> for AddRule {
     fn apply(t1:T, t2:T) -> (Option<R>,T) { (None, t1+t2) }
 }
@@ -23,6 +24,7 @@ impl<R,T:Add<Output=T>+Zero> UnitalAlgebraRule<R,T> for AddRule {
 }
 
 impl<R,T:Mul<Output=T>+MulAssociative> AssociativeAlgebraRule<R,T> for MulRule {}
+impl<R,T:Mul<Output=T>+MulCommutative> CommutativeAlgebraRule<R,T> for MulRule {}
 impl<R,T:Mul<Output=T>> AlgebraRule<R,T> for MulRule {
     fn apply(t1:T, t2:T) -> (Option<R>,T) { (None, t1*t2) }
 }

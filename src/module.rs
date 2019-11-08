@@ -275,7 +275,7 @@ pub trait AlgebraRule<R,T> {
 ///An [AlgebraRule] that is evaluation order independent
 pub trait AssociativeAlgebraRule<R,T>: AlgebraRule<R,T> {}
 ///An [AlgebraRule] that is order independent
-pub trait CommutativeMonoidRule<R,T>: AlgebraRule<R,T> {}
+pub trait CommutativeAlgebraRule<R,T>: AlgebraRule<R,T> {}
 
 ///An [AlgebraRule] where a term can be one
 pub trait UnitalAlgebraRule<R,T>: AlgebraRule<R,T> {
@@ -288,7 +288,7 @@ pub trait UnitalAlgebraRule<R,T>: AlgebraRule<R,T> {
 impl<T:Hash+Eq,R:AddAssociative,A:?Sized> AddAssociative for ModuleString<R,T,A> {}
 impl<T:Hash+Eq,R:AddCommutative,A:?Sized> AddCommutative for ModuleString<R,T,A> {}
 impl<T:Hash+Eq,R:MulAssociative,A:?Sized+AssociativeAlgebraRule<R,T>> MulAssociative for ModuleString<R,T,A> {}
-impl<T:Hash+Eq,R:MulCommutative,A:?Sized+CommutativeMonoidRule<R,T>> MulCommutative for ModuleString<R,T,A> {}
+impl<T:Hash+Eq,R:MulCommutative,A:?Sized+CommutativeAlgebraRule<R,T>> MulCommutative for ModuleString<R,T,A> {}
 
 impl<T:Hash+Eq,R:Distributive,A:?Sized> Distributive for ModuleString<R,T,A> {}
 
