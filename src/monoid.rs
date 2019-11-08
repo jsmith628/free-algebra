@@ -1,8 +1,61 @@
+//!
+//!Contains [MonoidalString] and the types and traits relevant to its system
+//!
+//!For more information see the struct-level docs
+//!
+
 use super::*;
 
 use std::ops::Index;
 use std::cmp::*;
 
+///
+///Creates free-arithmetic constructions based upon free-multiplication of letters of type `C`
+///that uses a [`Vec<C>`](Vec) internally
+///
+///# Basic Construction
+///
+///Given type parameters `C` and `M`, the construction goes as follows:
+/// * Internally, each instance contains a list of values of type `C`
+/// * By default, multiplication is given by concatenating the internal [`Vec`]'s  of each argument
+/// * Then, with the above as a base, the given type `M` can modify that operation by applying
+///   a multiplication rule to the internal list every time another `C` is appended to it
+///
+///With this system, using different `M` rules and `C` types, a number of variants can be defined:
+/// * [`FreeMonoid<C>`](FreeMonoid) is created by using the default multiplication with any `C`
+/// * [`FreeGroup<C>`](FreeGroup) is made by wrapping it in a [`FreeInv<C>`](FreeInv) to
+///  allow each `C` to be inverted and by and modifying `M` to make inverses cancel
+/// * [`FreePowMonoid<C,P>`](FreePowMonoid) is constructed by wrapping each `C` in a [`FreePow<C>`](FreePow)
+///  to raise each element to a symbolic power `P` and by having `M` combine any
+///  adjacent elements with equal base by adding their exponents
+///
+///# Other `impls`
+///
+///In addition to the basic multiplication traits, [MonoidalString] implements a number of other
+///notable traits depending on the type arguments:
+/// * [Div], [DivAssign], [Inv], etc. These apply whenever `M` implements
+/// * [Index] wraps the internal list's implementation
+///  [`InvMonoidRule<C>`](InvMonoidRule) to provide a way to invert `C` elements
+/// * [MulAssociative] and [MulCommutative] whenever `M` implements [AssociativeMonoidRule] or
+///  [CommutativeMonoidRule]
+/// * [PartialEq] with any type that implements [`Borrow<[C]>`](Borrow). This is in order to make
+///  it possible to test equality with other structures (like `Vec<C>` and `[C]`) that are lists
+///  of `C`'s
+/// * [PartialOrd] and [Ord] implement lexicographic ordering
+/// * [Extend], [FromIterator], and [Product] all are implemented by applying the multiplication
+///  rule to an [Iterator] of `C`'s.
+///
+///# A note on [IterMut]
+///
+///The method [MonoidalString.iter_mut()] *will* give an valid iterator over mutable references to each
+///element of the object, but it is of note that because of the nature of some of the [`MonoidRule`]'s,
+///the method will reallocate internal storage and iterate through *every* element,
+///even if dropped.
+///
+///The reason for this is that if it did not, it would be possible to modify a MonoidalString into
+///an invalid state. Hence, to mitigate this, the iterator must remultiply every element again as it
+///iterates over the references.
+///
 #[derive(Derivative)]
 #[derivative(Clone(clone_from="true"))]
 #[derivative(Default(bound=""))]
@@ -278,10 +331,18 @@ impl<C,M:?Sized> MonoidalString<C,M> {
     ///
     ///```
     ///
-    ///Note that a significant property of this product is that when the arguments commute, the
+    ///A property of significance of this product is that when the arguments commute, the
     ///output is always `1`.
     ///
     ///```
+    ///use maths_traits::algebra::One;
+    ///use free_algebra::{FreePowMonoid, FreePow};
+    ///
+    ///let x:FreePowMonoid<_,_> = FreePow('a', 2).into();
+    ///let y:FreePowMonoid<_,_> = FreePow('a', -24).into();
+    ///
+    ///assert!(x.commutator(y).is_one());
+    ///
     ///```
     ///
     pub fn commutator(self, rhs:Self) -> Self where Self:MulMonoid+Inv<Output=Self> {

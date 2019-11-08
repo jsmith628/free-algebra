@@ -1,8 +1,58 @@
+//!
+//!Contains [ModuleString] and the types and traits relevant to its system
+//!
+//!For more information see the struct-level docs
+//!
+
 use super::*;
 
 use std::collections::hash_map;
 
-
+///
+///Creates free-arithmetic constructions based upon order-invariant addition of terms of type `C` with
+///multiplication with scalar coefficients of type `R`
+///
+///# Basic Construction
+///
+///Given type parameters `R`, `T`, and `A`, the construction goes as follows:
+/// * Internally, each instance contains a [map](HashMap) from instances of `T` to coefficients from `R`
+/// * Addition is then implemented by merging the arguments' [HashMaps](HashMap) where repeated terms
+///  have their coefficients added together
+/// * Multiplication with `R` values is applied by each term's coefficient with the given scalar
+/// * Multiplication between terms is performed by multiplying the coefficients and apply the rule
+///  defined by type `A`
+/// * Then, full multiplication is defined by distributing over each pair of terms and summing
+///
+///With this system, using different `A` rules and `T`/`R` types, a number of variants can be defined:
+/// * [`FreeModule<R,T>`](FreeModule) defines a [vector-space](VectorSpace) over `R` using the default
+///  addition and `R`-multiplication without having a multiplication rule
+/// * [`FreeAlgebra<R,T>`](FreeAlgebra) is a `FreeModule<R,T>` but where the multiplication rule
+///  between terms is built as with a [`FreeMonoid<T>`](FreeMonoid)
+/// * [`MonoidRing<R,T>`](MonoidRing) is a `FreeModule<R,T>` but where the multiplication rule
+///  for terms simply uses the intrinsic multiplication of `T`
+///
+///# Other `impls`
+///
+///In addition to the basic arithmetic operations, [ModuleString] implements a number of other
+///notable traits depending on the type arguments:
+/// * [Sub], [SubAssign], [Neg], etc. These apply by negating each coefficient whenever `R` is negatable
+/// * [Index] gets coefficient references from a term reference
+/// * [MulAssociative] and [MulCommutative] whenever `R` is and `A` implements [AssociativeMonoidRule]
+///  or [CommutativeMonoidRule]
+/// * [Distributive] whenever `R` is
+/// * [Extend], [FromIterator], and [Sum] all are implemented using repeated addition.
+///
+///# A note on [IterMut]
+///
+///The method [ModuleString.iter_mut()] *will* give an valid iterator over mutable references to each
+///element of the object, but it is of note that because of the nature of some of the [`AlgebraRule`]'s,
+///the method will reallocate internal storage and iterate through *every* element,
+///even if dropped.
+///
+///The reason for this is that if it did not, it would be possible to modify a ModuleString into
+///an invalid state. Hence, to mitigate this, the iterator must remultiply every element again as it
+///iterates over the references.
+///
 #[derive(Derivative)]
 #[derivative(Clone(clone_from="true"))]
 #[derivative(Default(bound=""))]
