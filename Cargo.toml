@@ -1,11 +1,15 @@
 [package]
-name = "free-algebra"
 authors = ["Joshua Smith <anvil775@gmail.com>"]
+name = "free-algebra"
+description = "Types for constructing free algebras over sets."
 version = "0.1.0"
 edition = "2018"
-
-[lib]
-name = "free_algebra"
+keywords = ["mathematics", "algebra", "polynomials"]
+categories = ["algorithms", "science", "data-structures"]
+repository = "https://github.com/anvil777/free-algebra"
+documentation = "https://docs.rs/free-algebra"
+license = "MIT"
+readme = "README.md"
 
 [dependencies]
 derivative = "1.0"
