@@ -47,6 +47,12 @@
 //! * Complex numbers: Results from when `T` is either `1` and `i` and multiplies accordingly
 //! * Quaternions: Same as for Complex numbers, but with more imaginary units
 //!
+//!# Use cases
+//!
+//!The primary purposes for this crate fall into two general categories:
+//! * Use as an abstract foundation to create more specific systems like polynomials or Clifford algebras.
+//! * Utilization as a tool for lazily storing costly arithmetic operations for future evaluation.
+//!
 //!# Crate structures
 //!
 //!This crate consists of the following:

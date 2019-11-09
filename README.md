@@ -1,7 +1,7 @@
 
-Rust types for constructing free algebras over sets.
+Types for constructing free algebras over sets in the Rust programming language.
 
-# What even is a "Free Algebra"?
+## What even is a "Free Algebra"?
 
 In the context of this crate, the term "Algebra" refers to a range of mathematical
 constructions involving arithmetic operations, and the term "Free" refers to the nature of those
@@ -39,15 +39,21 @@ which types are used, which operations are considered, and what rules are follow
 Examples include:
  * `FreeModule<R,T>`: Results from freely adding elements of `T` in an associative
   and commutative manner and allowing distributive multiplication by elements from `R`
- * `FreeAlgebra<R,T>`: The same as with FreeModule, except that we allow for
-  free multiplication of elements distributively (like with FreeMonoid)
- * Polynomials: A FreeAlgebra, but where multiplication between `T`'s is commutative and associative
- * Clifford algebra: A FreeAlgebra, but where multiplication is associative and
+ * `FreeAlgebra<R,T>`: The same as with `FreeModule`, except that we allow for
+  free multiplication of elements distributively (like with `FreeMonoid`)
+ * Polynomials: A `FreeAlgebra`, but where multiplication between `T`'s is commutative and associative
+ * Clifford algebra: A `FreeAlgebra`, but where multiplication is associative and
    an element times itself results in a scalars
  * Complex numbers: Results from when `T` is either `1` and `i` and multiplies accordingly
  * Quaternions: Same as for Complex numbers, but with more imaginary units
 
-# Crate structures
+## Use cases
+
+The primary purposes for this crate fall into two general categories:
+ * Use as an abstract foundation to create more specific systems like polynomials or Clifford algebras.
+ * Utilization as a tool for lazily storing costly arithmetic operations for future evaluation.
+
+## Crate structure
 
 This crate consists of the following:
  * Two main structures for doing the free-arithmetic over some type
@@ -55,13 +61,13 @@ This crate consists of the following:
  * Type aliases for particular combinations of construction and rules
 
 Specifically:
- * MonoidalString constructs free-multiplying structures over a type `T` using an order-dependent
+ * `MonoidalString` constructs free-multiplying structures over a type `T` using an order-dependent
    internal representation with a `Vec<T>` that determines its multiplication rule using an
-   implementor of the trait MonoidRule. Aliases of this struct include FreeMonoid and FreeGroup.
- * ModuleString constructs types consisting of terms of type `T` with scalars from
-   some additive type `R` stored with an order independent HashMap. This grants all ModuleString's
-   an addition operation by adding the coeffients of like terms, and a free-multiplication can
-   be included using an optional AlgebraRule parameter. Aliases of this struct include
-   FreeModule and FreeAlgebra.
+   implementor of the trait `MonoidRule`. Aliases of this struct include `FreeMonoid` and `FreeGroup`.
+ * `ModuleString` constructs types consisting of terms of type `T` with scalars from
+   some additive type `R` stored with an order independent `HashMap`. This grants all `ModuleString`'s
+   an addition operation by adding the coefficients of like terms, and a free-multiplication can
+   be included using an optional `AlgebraRule` parameter. Aliases of this struct include
+   `FreeModule` and `FreeAlgebra`.
 
 For more information, see the respective structs in the docs
