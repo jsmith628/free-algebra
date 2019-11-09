@@ -34,7 +34,7 @@
 //!
 //!```
 //!
-//!In addition to this, moreover, a number of other constructions can be acheived by changing
+//!In addition to this, moreover, a number of other constructions can be achieved by changing
 //!which types are used, which operations are considered, and what rules are followed.
 //!Examples include:
 //! * [`FreeModule<R,T>`](FreeModule): Results from freely adding elements of `T` in an associative
