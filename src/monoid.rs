@@ -331,7 +331,7 @@ impl<C,M:?Sized> MonoidalString<C,M> {
     ///
     ///```
     ///
-    ///A property of significance of this product is that when the arguments commute, the
+    ///A property of significance for this product is that when the arguments commute, the
     ///output is always `1`.
     ///
     ///```

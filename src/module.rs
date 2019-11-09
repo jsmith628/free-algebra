@@ -229,15 +229,66 @@ impl<T:Hash+Eq,R,A:?Sized> IntoIterator for ModuleString<R,T,A> {
 
 impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
 
+    ///
     ///Returns the number of terms in this module element
+    ///
+    ///## Examples
+    ///```
+    ///use maths_traits::algebra::Zero;
+    ///use free_algebra::FreeModule;
+    ///
+    ///let p = FreeModule::zero();
+    ///let q = &p + (3.5, 'x');
+    ///let r = &q + (2.0, 'y');
+    ///let s = &r + (2.0, 'x'); //adds to first term without increasing length
+    ///
+    ///assert_eq!(p.len(), 0);
+    ///assert_eq!(q.len(), 1);
+    ///assert_eq!(r.len(), 2);
+    ///assert_eq!(s.len(), 2);
+    ///
+    ///```
+    ///
     pub fn len(&self) -> usize {self.terms.len()}
 
+    ///
     ///Retrieves a reference to the coefficient of a term, if it is non-zero
+    ///
+    ///## Examples
+    ///```
+    ///use maths_traits::algebra::Zero;
+    ///use free_algebra::FreeModule;
+    ///
+    ///let p = FreeModule::zero() + (3.5, 'x') + (2.0, 'y') + (1.0, 'z');
+    ///
+    ///assert_eq!(p.get_ref(&'x'), Some(&3.5));
+    ///assert_eq!(p.get_ref(&'y'), Some(&2.0));
+    ///assert_eq!(p.get_ref(&'z'), Some(&1.0));
+    ///assert_eq!(p.get_ref(&'w'), None);
+    ///
+    ///```
+    ///
     pub fn get_ref<Q:Hash+Eq>(&self, t: &Q) -> Option<&R> where T:Borrow<Q> {
         self.terms.get(t)
     }
 
+    ///
     ///Clones a the coefficient of a term or returns [zero](Zero::zero()) if it doesn't exist
+    ///
+    ///## Examples
+    ///```
+    ///use maths_traits::algebra::Zero;
+    ///use free_algebra::FreeModule;
+    ///
+    ///let p = FreeModule::zero() + (3.5, 'x') + (2.0, 'y') + (1.0, 'z');
+    ///
+    ///assert_eq!(p.get(&'x'), 3.5);
+    ///assert_eq!(p.get(&'y'), 2.0);
+    ///assert_eq!(p.get(&'z'), 1.0);
+    ///assert_eq!(p.get(&'w'), 0.0);
+    ///
+    ///```
+    ///
     pub fn get<Q:Hash+Eq>(&self, t: &Q) -> R where T:Borrow<Q>, R:Zero+Clone {
         self.terms.get(t).map_or_else(|| R::zero(), |r| r.clone())
     }
@@ -245,14 +296,71 @@ impl<T:Hash+Eq,R,A:?Sized> ModuleString<R,T,A> {
     ///Produces an iterator over references to the terms and references in this element
     pub fn iter<'a>(&'a self) -> Iter<'a,R,T> { self.terms.iter().map(|(t,r)| (r,t)) }
 
+    ///
     ///Produces an iterator over mutable references to the terms and references in this element
+    ///
+    ///## Examples
+    ///```
+    ///use maths_traits::algebra::Zero;
+    ///use free_algebra::FreeModule;
+    ///
+    ///let mut p = FreeModule::zero() + (3.5, 'x') + (2.0, 'y') + (1.0, 'z');
+    ///for (_, t) in p.iter_mut() {
+    ///    *t = 'a';
+    ///}
+    ///
+    ///assert_eq!(p.get(&'x'), 0.0);
+    ///assert_eq!(p.get(&'y'), 0.0);
+    ///assert_eq!(p.get(&'z'), 0.0);
+    ///assert_eq!(p.get(&'a'), 6.5);
+    ///
+    ///```
+    ///
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a,R,T,A> where R:AddAssign {
         let mut temp = Self { terms: HashMap::with_capacity(self.len()), rule:PhantomData };
         ::std::mem::swap(self, &mut temp);
         IterMut { dest_ref: self, next: None, iter: temp.into_iter() }
     }
 
+    ///
     ///Computes the algebraic commutator `[a,b] = a*b - b*a`
+    ///
+    ///## Examples
+    ///```
+    ///use maths_traits::algebra::One;
+    ///use free_algebra::{FreeAlgebra, FreeMonoid};
+    ///
+    ///let one = FreeMonoid::<char>::one();
+    ///let x:FreeMonoid<_> = 'x'.into();
+    ///let y:FreeMonoid<_> = 'y'.into();
+    ///
+    ///let p:FreeAlgebra<f32,_> = FreeAlgebra::one() + &x;
+    ///let q:FreeAlgebra<f32,_> = FreeAlgebra::one() + &y;
+    ///
+    ///let commutator = p.commutator(q);
+    ///
+    ///assert_eq!(commutator.get(&one), 0.0);
+    ///assert_eq!(commutator.get(&x), 0.0);
+    ///assert_eq!(commutator.get(&y), 0.0);
+    ///assert_eq!(commutator.get(&(&x*&y)), 1.0);
+    ///assert_eq!(commutator.get(&(&y*&x)), -1.0);
+    ///```
+    ///
+    ///A property of significance for this product is that when the arguments commute, the
+    ///output is always `0`.
+    ///
+    ///```
+    ///use maths_traits::algebra::{One, Zero};
+    ///use free_algebra::{FreeAlgebra, FreeMonoid};
+    ///
+    ///let p = FreeAlgebra::<f32,_>::one() + FreeMonoid::from('x');
+    ///
+    ///let commutator = p.clone().commutator(p);
+    ///assert!(commutator.is_zero());
+    ///```
+    ///
+    ///
+    ///
     pub fn commutator(self, rhs:Self) -> Self where Self:MulMagma+Sub<Output=Self> {
         self.clone()*rhs.clone() - rhs*self
     }
