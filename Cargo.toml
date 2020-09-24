@@ -1,5 +1,5 @@
 [package]
-authors = ["Joshua Smith <anvil775@gmail.com>"]
+authors = ["Joshua Smith <jsmith62831@gmail.com>"]
 name = "free-algebra"
 description = "Types for constructing free algebras over sets."
 version = "0.1.0"
